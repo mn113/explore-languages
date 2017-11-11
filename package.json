@@ -1,0 +1,25 @@
+{
+  "name": "grammar-tool",
+  "version": "0.0.1",
+  "description": "Web tool for analysing & composing foreign texts",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "nlp",
+    "foreign",
+    "grammar",
+    "texts"
+  ],
+  "author": "Martin Nicholson",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.16.2",
+    "body-parser": "^1.17.2",
+    "cors": "^2.8.3",
+    "lodash": "^4.17.4",
+    "serve-favicon": "^2.4.3",
+    "node-fetch": "^1.7.3"
+  }
+}

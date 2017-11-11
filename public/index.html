@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Grammar Tool</title>
+	<link rel="stylesheet" href="grammar-tool.css">
+</head>
+<body>
+
+	<h1>Grammar Tool</h1>
+
+	<form>
+		<select>
+			<option>Auto-Detect Source Language</option>
+			<option>English</option>
+			<option>French</option>
+			<option>Spanish</option>
+			<option>Greek</option>
+		</select>
+	</form>
+
+	<div id="source" contenteditable="true">
+		<p>The Quick Brown Fox Jumps Over A Lazy Dog</p>
+		<p>Pack My Box With Five Dozen Liquor Jugs</p>
+	</div>
+
+	<button id="goBtn">Analyse!</button>
+
+	<div id="output">
+
+	</div>
+
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+	<script src="js/frontend.js"></script>
+</body>
+<html>
