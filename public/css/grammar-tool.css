@@ -17,7 +17,7 @@ body {
 	background: white;
 }
 
-.VERB {
+.VERB, .AUX {
 	color: forestgreen;
 }
 
@@ -25,10 +25,30 @@ body {
 	color: red;
 }
 
+.fem:after { content: '♀' ; font-size: 0.7em; vertical-align: sub; color: hotpink; }
+.masc:after { content: '♂' ; font-size: 0.7em; vertical-align: sub; color: dodgerblue; }
+.neut:after { content: '⚲' ; font-size: 0.7em; vertical-align: sub; color: darkgoldenrod; }
+
+.nominative { background: rgba(0,0,255,0.2); }
+.accusative { background: rgba(65,255,0,0.2); }
+.genitive 	{ background: rgba(255,200,0,0.2); }
+.dative		{ background: rgba(255,0,0,0.2); }
+.instrumental 	{ background: rgba(180,0,255,0.2); }
+.prepositional	{ background: rgba(255,0,180,0.2); }
+
 #examples li {
 	height: 1.2em;
 	overflow: hidden;
 }
 #examples li:hover {
 	color: blue;
+}
+
+#panel {
+	position: absolute;
+	top: 0;
+	right: -200px;
+	width: 250px;
+	border: 1px solid fuchsia;
+	padding: 1em;
 }

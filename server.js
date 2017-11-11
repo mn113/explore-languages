@@ -12,6 +12,7 @@ const fetch = require('node-fetch');
 const querystring = require('querystring');
 const conllu = require('conllu');
 const franc = require('franc-min');
+const gtr = require('google-translate-api');
 
 // Static assets to be served:
 app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
@@ -71,17 +72,50 @@ function renderHTML(conlluObj) {
 	var html = "";
 	for (var i = 0; i < conlluObj.sentences.length; i++) {
 		var s = conlluObj.sentences[i];
-		console.log(s);
 		for (var j = 0; j < s.tokens.length; j++) {
 			var token = s.tokens[j];
+			//console.log(token);
 			// Build the token's HTML tag:
-			html += `<span class="${token.upostag}" title="${token.feats}">${token.form}</span>`;
-			if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";	// space or no space?
+			if (token.upostag === 'PUNCT') {
+				html += token.form;
+			}
+			else {
+				var classes = [token.upostag, token.xpostag];
+				if (token.feats) {
+					if (token.feats.includes("Gender=Fem")) classes.push("fem");
+					else if (token.feats.includes("Gender=Masc")) classes.push("masc");
+					else if (token.feats.includes("Gender=Neut")) classes.push("neut");
+					if (token.feats.includes("Case=Nom")) classes.push("nominative");
+					else if (token.feats.includes("Case=Nom")) classes.push("nominative");
+					else if (token.feats.includes("Case=Acc")) classes.push("accusative");
+					else if (token.feats.includes("Case=Gen")) classes.push("genitive");
+					else if (token.feats.includes("Case=Dat")) classes.push("dative");
+					else if (token.feats.includes("Case=Instr")) classes.push("instrumental");
+					else if (token.feats.includes("Case=Prep")) classes.push("prepositional");
+				}
+
+				html += `<span class="${classes.join(" ")}" title="${tokenTooltip(token)}">${token.form}</span>`;
+			}
+			// Space after by default:
+			if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";
 		}
 		// When should newline be applied?
-		html += "<br>";
+		//html += "<br>";
 	}
 	return html;
+}
+
+function tokenTooltip(token) {
+	token.en = '?';//Promise.resolve(translateByGoogle(token.form));
+	return `${token.en} <br> ${token.lemma} | ${token.upostag} <br> ${token.feats}`;
+}
+
+function translateByGoogle(input, toLang) {
+	return gtr(input, {to: 'en'}).then(res => {
+		return res.text;
+	}).catch(err => {
+		console.error(err);
+	});
 }
 
 // Fetch a verb conjugation:
@@ -106,9 +140,8 @@ app.post('/detect', function(req, res) {
 // Process source text:
 app.post('/process', function(req, res) {
 	console.log('Got a POST request at /process:', req.body);
-	// Detect lang if it wasn't sent:
-	var lang = req.body.lang;
-	if (!lang) lang = detectLang(req.body.data);
+	// Detect lang alwaus:
+	var lang = detectLang(req.body.data);
 	// Send request to UDPipe API:
 	var udPromise = udpipe(req.body.data, lang);
 	// Handle API response:
@@ -121,11 +154,18 @@ app.post('/process', function(req, res) {
 			// Instantiate a ConLLU interpreter:
 			var c = new conllu.Conllu();
 			c.serial = udResult;	// HOW TO USE CONLLU MODULE WITH RESPONSE??
-			console.log(c);
+			//console.log(c);
 			var html = renderHTML(c);
 			res.end(html);
 		})
 		.catch(err => res.end(err));
+});
+
+// Translate source text:
+app.post('/translate', function(req, res) {
+	console.log('Got a POST request at /translate:', req.body);
+	Promise.resolve(translateByGoogle(req.body.data))
+		.then(translation => res.end(translation));
 });
 
 // Fallback:

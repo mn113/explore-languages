@@ -22,25 +22,36 @@
 	</ul>
 
 	<form>
-		<select>
-			<option>Auto-Detect Source Language</option>
-			<option>English</option>
-			<option>French</option>
-			<option>Spanish</option>
-			<option>Greek</option>
-		</select>
+		<button id="goBtn">Tokenise, Lemmatise, Tag</button>
+		<input type="checkbox"> Show full translation
+		<input type="checkbox" checked> Show genders?
+		<input type="checkbox" checked> Show cases?
+		<!--button id="picsBtn">Nouns -> Pictures</button-->
 	</form>
 
+	<h2>Input <span></span></h2>
 	<div id="source" contenteditable="true">
-		<p>Quiero contar contigo, toda la noche en la calle.</p>
+		Quiero contar contigo, toda la noche en la calle.
 	</div>
 
-	<button id="goBtn">Analyse!</button>
-
+	<h2>Output</h2>
 	<div id="output">
-
 	</div>
 
+	<aside id="panel">
+		<section>
+			<h3>Dict</h3>
+		</section>
+		<section>
+			<h3>FreqList</h3>
+		</section>
+		<section>
+			<h3>Nouns</h3>
+		</section>
+		<section>
+			<h3>Verbs</h3>
+		</section>
+	</aside>
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
 	<script src="https://unpkg.com/tippy.js/dist/tippy.min.js"></script>
