@@ -20,14 +20,15 @@ $(document).ready(function() {
 
 		$.post('/translate', {data: text}, function(resp) {
 			console.log("Server response", resp);
+			$("#translated").html(resp);
 			// Do something with it
 		});
 
 		$.post('/process', {data: text, lang: lang}, function(resp) {
 			console.log("Server response", resp);
-			$("#output").html(resp);
+			$("#tagged").html(resp);
 			// Generate token tooltips:
-			tippy("span");
+			tippy("rb");
 		});
 	});
 

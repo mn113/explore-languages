@@ -75,8 +75,9 @@ function renderHTML(conlluObj) {
 		for (var j = 0; j < s.tokens.length; j++) {
 			var token = s.tokens[j];
 			//console.log(token);
+			token.en = Promise.resolve(translateByGoogle(token.form));
 			// Build the token's HTML tag:
-			if (token.upostag === 'PUNCT') {
+			if (['PUNCT', 'NUM'].includes(token.upostag)) {
 				html += token.form;
 			}
 			else {
@@ -84,17 +85,19 @@ function renderHTML(conlluObj) {
 				if (token.feats) {
 					if (token.feats.includes("Gender=Fem")) classes.push("fem");
 					else if (token.feats.includes("Gender=Masc")) classes.push("masc");
-					else if (token.feats.includes("Gender=Neut")) classes.push("neut");
+					else if (token.feats.includes("Gender=Neut")) classes.push("neuter");
+					else if (token.feats.includes("Gender=Com")) classes.push("common");
 					if (token.feats.includes("Case=Nom")) classes.push("nominative");
-					else if (token.feats.includes("Case=Nom")) classes.push("nominative");
 					else if (token.feats.includes("Case=Acc")) classes.push("accusative");
 					else if (token.feats.includes("Case=Gen")) classes.push("genitive");
 					else if (token.feats.includes("Case=Dat")) classes.push("dative");
 					else if (token.feats.includes("Case=Instr")) classes.push("instrumental");
 					else if (token.feats.includes("Case=Prep")) classes.push("prepositional");
 				}
-
-				html += `<span class="${classes.join(" ")}" title="${tokenTooltip(token)}">${token.form}</span>`;
+				html += `<ruby class="${classes.join(" ")}">
+				<rb title="${tokenTooltip(token)}">${token.form}</rb>
+				<rt>${token.en}</rt>
+				</ruby>`;
 			}
 			// Space after by default:
 			if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";
