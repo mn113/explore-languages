@@ -179,6 +179,6 @@ app.use(function(req, res) {
 
 
 // Serve:
-const port = 3000;
+const port = 80;
 app.listen(port);
 console.log('Magic happens on port ' + port);
