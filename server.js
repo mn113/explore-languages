@@ -1,4 +1,4 @@
-/* */
+/* eslint-env node */
 
 // Express app
 //var _ = require('lodash');
@@ -11,6 +11,9 @@ var cors = require('cors');
 var favicon = require('serve-favicon');
 const fetch = require('node-fetch');
 const querystring = require('querystring');
+const conllu = require('conllu');
+const franc = require('franc-min');
+
 
 // Static assets to be served:
 app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
@@ -25,19 +28,45 @@ app.use(cors());				// might need configuring, specific domains etc.
 // SERVICES:
 // Make a request to the UDPipe API to tokenise, lemmatise and tag our string:
 function udpipe(input, lang) {
-	const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api/process";
+	// Conversion from franc's code to UDPipe model name:
+	var languageCodes = {
+		'eng': 'english',
+		'spa': 'spanish',
+		'fra': 'french',
+		'por': 'portuguese',
+		'ita': 'italian',
+		'rus': 'russian',
+		'deu': 'german',
+		'nob': 'norwegian',
+		'swe': 'swedish',
+		'nld': 'dutch',
+		'dan': 'danish',
+		'ell': 'greek',
+		'cat': 'catalan'
+	};
+
+	const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api";
 	var opts = {
-		model : lang,
+		model : languageCodes[lang],
 		tokenizer: '',
 		tagger: '',
 		parser: '',
 		data: input
 	};
 
-	var fetched = fetch(baseUrl + querystring.stringify(opts));
+	var url = baseUrl + '/process?' + querystring.stringify(opts);
+	console.log(url);
+	var fetched = fetch(url);
 	return fetched;
 }
 
+
+function detectLang(text) {
+	var topMatch = franc(text);
+	console.log(text, topMatch);
+	//return (topMatch[1] > 0.8) ? topMatch[0] : 'english';
+	return topMatch;
+}
 
 // ROUTES:
 // Serve static game page:
@@ -48,18 +77,22 @@ app.get('/', function(req, res) {
 });
 
 // Process source text:
-app.put('/process', function(req, res) {
-	console.log('Got a PUT request at /process');
-	console.log(req);
-	var output = udpipe(req, 'spanish');
-	console.log(output);
+app.post('/process', function(req, res) {
+	console.log('Got a POST request at /process:', req.body);
+	var lang = detectLang(req.body.data);
+	var udPromise = udpipe(req.body.data, lang);
 
-	// Text for the requester:
-	output.then(response => response.text())
-			.then(text => res.end(text))
+	udPromise.then(udResponse => udResponse.text())
+			.then(json => {
+				// We have the tagged sentence(s) but in a nasty format
+				console.log(json);
+				// Instantiate a ConLLU interpreter:
+				var c = new conllu.Conllu();
+				//c.serial(json.result);
+				console.log(c);
+				res.end(json.result);
+			})
 			.catch(err => res.end(err));
-
-	//res.status(200).json(output);
 });
 
 // Fallback:

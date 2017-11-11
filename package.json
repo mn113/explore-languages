@@ -15,11 +15,20 @@
   "author": "Martin Nicholson",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.16.2",
     "body-parser": "^1.17.2",
+    "conllu": "^0.1.2",
     "cors": "^2.8.3",
+    "express": "^4.16.2",
+    "franc": "^3.1.1",
+    "franc-min": "^3.1.1",
     "lodash": "^4.17.4",
-    "serve-favicon": "^2.4.3",
-    "node-fetch": "^1.7.3"
+    "node-fetch": "^1.7.3",
+    "serve-favicon": "^2.4.3"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "node": true
+    }
   }
 }
