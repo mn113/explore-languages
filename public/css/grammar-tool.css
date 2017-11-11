@@ -24,3 +24,11 @@ body {
 .NOUN {
 	color: red;
 }
+
+#examples li {
+	height: 1.2em;
+	overflow: hidden;
+}
+#examples li:hover {
+	color: blue;
+}

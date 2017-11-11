@@ -74,11 +74,19 @@ function renderHTML(conlluObj) {
 		console.log(s);
 		for (var j = 0; j < s.tokens.length; j++) {
 			var token = s.tokens[j];
-			html += `<span class="${token.upostag}">${token.form}</span> `;
+			// Build the token's HTML tag:
+			html += `<span class="${token.upostag}" title="${token.feats}">${token.form}</span>`;
+			if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";	// space or no space?
 		}
+		// When should newline be applied?
 		html += "<br>";
 	}
 	return html;
+}
+
+// Fetch a verb conjugation:
+function fetchVerbConj(verb, lang) {
+	return verb;
 }
 
 
