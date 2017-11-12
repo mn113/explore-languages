@@ -16,15 +16,17 @@ $(document).ready(function() {
 			$("h2:first-of-type span").html("["+lang+" detected]");
 		});
 
-		// Then:
-
 		$.post('/translate', {data: text}, function(resp) {
 			console.log("Server response", resp);
 			$("#translated").html(resp);
+		});
+
+		$.post('/frequencies', {data: text}, function(resp) {
+			console.log("Server response", resp);
 			// Do something with it
 		});
 
-		$.post('/process', {data: text, lang: lang}, function(resp) {
+		$.post('/process', {data: text}, function(resp) {
 			console.log("Server response", resp);
 			$("#tagged").html(resp);
 			// Generate token tooltips:

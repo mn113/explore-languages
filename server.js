@@ -5,6 +5,9 @@
 const path = require('path');
 const express = require('express');
 const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const io = require('socket.io')(server);
 const bodyParser = require('body-parser');
 //const cors = require('cors');
 const favicon = require('serve-favicon');
@@ -18,8 +21,10 @@ const PythonShell = require('python-shell');
 
 
 // Static assets to be served:
-app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
 app.use(express.static(path.join(__dirname,'public')));
+//app.use(express.static(path.join(__dirname,'public/js')));
+//app.use(express.static(path.join(__dirname,'public/img')));
+app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
 
 // Set up middleware:
 app.use(bodyParser.urlencoded({ extended: false }));	// parse application/x-www-form-urlencoded
@@ -31,37 +36,41 @@ app.use(bodyParser.json()); 	// for parsing application/json
 // Local franc module will detect any text's language:
 function detectLang(text) {
 	var topMatch = franc(text);
-	console.log(text, topMatch);
-	//return (topMatch[1] > 0.8) ? topMatch[0] : 'english';
-	return topMatch;
+
+	// Conversion from franc's code to UDPipe model name & iso code:
+	var languageCodes = {
+		'eng': ['english','en'],
+		'spa': ['spanish','es'],
+		'fra': ['french','fr'],
+		'por': ['portuguese','pt'],
+		'ita': ['italian','it'],
+		'rus': ['russian','ru'],
+		'deu': ['german','de'],
+		'nob': ['norwegian','nb'],
+		'swe': ['swedish','sv'],
+		'nld': ['dutch','nl'],
+		'dan': ['danish','da'],
+		'ell': ['greek','el'],
+		'cat': ['catalan','ca'],
+		'ron': ['romanian','ro'],
+		'unk': ['unknown', 'en']
+	};
+	console.log(languageCodes[topMatch][0], 'detected');
+	return {
+		modelName: languageCodes[topMatch][0],
+		isoCode: languageCodes[topMatch][1]
+	};
 }
 
 // Make a request to the UDPipe API to tokenise, lemmatise and tag our string:
-function udpipe(input, lang) {
-	// Conversion from franc's code to UDPipe model name:
-	var languageCodes = {
-		'eng': 'english',
-		'spa': 'spanish',
-		'fra': 'french',
-		'por': 'portuguese',
-		'ita': 'italian',
-		'rus': 'russian',
-		'deu': 'german',
-		'nob': 'norwegian',
-		'swe': 'swedish',
-		'nld': 'dutch',
-		'dan': 'danish',
-		'ell': 'greek',
-		'cat': 'catalan'
-	};
-
+function udpipe(input, langModelName) {
 	const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api";
 	var opts = {
-		model : languageCodes[lang],
+		data: input,
+		model: langModelName,
 		tokenizer: '',
 		tagger: '',
-		parser: '',
-		data: input
+		parser: ''
 	};
 
 	var url = baseUrl + '/process?' + querystring.stringify(opts);
@@ -75,15 +84,7 @@ function renderHTML(conlluObj, lang) {
 	var html = "";
 	for (var i = 0; i < conlluObj.sentences.length; i++) {
 		var s = conlluObj.sentences[i];
-		console.log('sentence', i);
-
-		// Perform frequencies lookup:
-		console.log(s.tokens.length, 'tokens...');
-		console.log(s.tokens[0]);
-		var wordlist = s.tokens.reduce(t => t.upostag !== 'PUNCT').map(t => t.form);	// ERROR
-		console.log(wordlist, lang);
-		var freqs = getWordFreqs(wordlist[0], wordlist[1], wordlist[2], lang);
-		console.log(freqs);
+		if (s.tokens.length < 1) break;	// fix for empty trailing sentence
 
 		for (var j = 0; j < s.tokens.length; j++) {
 			var token = s.tokens[j];
@@ -151,14 +152,13 @@ function getWordFreqs(words, lang) {
 		args: words.concat(lang)
 	};
 
-	PythonShell.run('wordfreqs.py', options, function(err, results) {
+	return PythonShell.run('wordfreqs.py', options, function(err, results) {
 		if (err) throw err;
 		// results is an array consisting of messages collected during execution
-		console.log('results: %j', results);
+		console.log('wordfreqs.py results: %j', results);
+		return results;
 	});
 }
-//var tw = ['big', 'red', 'helicopter'];
-//getWordFreqs(tw, 'en');
 
 
 // ROUTES:
@@ -169,7 +169,7 @@ app.get('/', function(req, res) {
 	res.sendFile(path.join(__dirname + '/public/index.html'));
 });
 
-// Serve Wikipedia texts:
+// Serve random Wikipedia texts:
 app.get('/wikipedia/:lang/:num', function(req, res) {
 	console.log("Request received:", req.params);
 	// Set up language-specific wiki fetcher:
@@ -191,7 +191,24 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 
 // Language detection:
 app.post('/detect', function(req, res) {
-	res.send(detectLang(req.body.data));
+	console.log('Got a POST request at /detect');
+	var lang = detectLang(req.body.data);
+	res.send(lang.modelName);
+});
+
+// Frequency getter:
+app.post('/frequencies', function(req, res) {
+	console.log('Got a POST request at /frequencies');
+	var lang = detectLang(req.body.data);
+
+	// Perform frequencies lookup:
+	var wordlist = req.body.data.split(/\s/);
+		//.reduce(t => t.length > 2);
+	console.log(203, wordlist);
+	var freqs = getWordFreqs(wordlist, lang.isoCode);
+	console.log(freqs);	// undefined
+
+	res.send(freqs);
 });
 
 // Process source text:
@@ -200,7 +217,7 @@ app.post('/process', function(req, res) {
 	// Detect lang alwaus:
 	var lang = detectLang(req.body.data);
 	// Send request to UDPipe API:
-	var udPromise = udpipe(req.body.data, lang);
+	var udPromise = udpipe(req.body.data, lang.modelName);
 	// Handle API response:
 	udPromise
 		.then(udResponse => udResponse.json())
@@ -226,13 +243,22 @@ app.post('/translate', function(req, res) {
 });
 
 // Fallback:
-app.use(function(req, res) {
-	console.log("404 served");
-	res.status(404).send("Sorry can't find that!");
+//app.use(function(req, res) {
+//	console.log("404 served");
+//	res.status(404).send("Sorry can't find that!");
+//});
+
+// SOCKET.IO SETUP
+io.on('connection', function(socket) {
+	console.log('a user connected');
+	socket.on('disconnect', function() {
+		console.log('user disconnected');
+	});
 });
 
 
 // Serve:
 var port = process.env.PORT || 3000;
-app.listen(port);
-console.log('Magic happens on port ' + port);
+server.listen(port, function() {
+	console.log('Magic happens on port ' + port);
+});
