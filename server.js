@@ -14,6 +14,8 @@ const conllu = require('conllu');
 const franc = require('franc-min');
 const gtr = require('google-translate-api');
 const wiki = require('wikijs').default;
+const PythonShell = require('python-shell');
+
 
 // Static assets to be served:
 app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
@@ -69,10 +71,20 @@ function udpipe(input, lang) {
 }
 
 // Generate HTML to send back to page:
-function renderHTML(conlluObj) {
+function renderHTML(conlluObj, lang) {
 	var html = "";
 	for (var i = 0; i < conlluObj.sentences.length; i++) {
 		var s = conlluObj.sentences[i];
+		console.log('sentence', i);
+
+		// Perform frequencies lookup:
+		console.log(s.tokens.length, 'tokens...');
+		console.log(s.tokens[0]);
+		var wordlist = s.tokens.reduce(t => t.upostag !== 'PUNCT').map(t => t.form);	// ERROR
+		console.log(wordlist, lang);
+		var freqs = getWordFreqs(wordlist[0], wordlist[1], wordlist[2], lang);
+		console.log(freqs);
+
 		for (var j = 0; j < s.tokens.length; j++) {
 			var token = s.tokens[j];
 			//console.log(token);
@@ -129,6 +141,25 @@ function fetchVerbConj(verb, lang) {
 	return verb;
 }
 
+// Wrapper for Python wordfreqs script:
+function getWordFreqs(words, lang) {
+	var options = {
+		mode: 'text',
+		pythonPath: 'python',
+		pythonOptions: ['-u'],
+		scriptPath: '',
+		args: words.concat(lang)
+	};
+
+	PythonShell.run('wordfreqs.py', options, function(err, results) {
+		if (err) throw err;
+		// results is an array consisting of messages collected during execution
+		console.log('results: %j', results);
+	});
+}
+//var tw = ['big', 'red', 'helicopter'];
+//getWordFreqs(tw, 'en');
+
 
 // ROUTES:
 // Serve index.html & accoutrements:
@@ -178,10 +209,10 @@ app.post('/process', function(req, res) {
 			var udResult = json.result;
 			console.log(udResult);
 			// Instantiate a ConLLU interpreter:
-			var c = new conllu.Conllu();
-			c.serial = udResult;	// HOW TO USE CONLLU MODULE WITH RESPONSE??
+			var conObj = new conllu.Conllu();
+			conObj.serial = udResult;	// HOW TO USE CONLLU MODULE WITH RESPONSE??
 			//console.log(c);
-			var html = renderHTML(c);
+			var html = renderHTML(conObj, lang);
 			res.send(html);
 		})
 		.catch(err => res.end(err));
