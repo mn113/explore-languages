@@ -46,13 +46,28 @@ body {
 .instrumental 	{ background: rgba(180,0,255,0.2); }
 .prepositional	{ background: rgba(255,0,180,0.2); }
 
+ul#examples {
+	display: flex;
+	padding: 1em;
+}
 #examples li {
-	height: 1.2em;
+	font-size: 0.9em;
+	line-height: 1.1em;
+	height: 2.7em;
+	flex-basis: 12em;
+	padding: 0.3em 0.5em;
+	margin: 0.3em 0.5em;
+	background: white;
+	border: 1px solid #999;
 	overflow: hidden;
 }
 #examples li:hover {
 	color: blue;
 }
+#examples .ru:before { content: '🇷🇺'; margin-right: 1em; }
+#examples .it:before { content: '🇮🇹'; }
+#examples .sv:before { content: '🇸🇪'; }
+#examples .el:before { content: '🇬🇷'; }
 
 #panel {
 	position: absolute;

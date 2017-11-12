@@ -37,9 +37,19 @@ $(document).ready(function() {
 	});
 
 	// Examples loader:
-	$("#examples li").on('click', function() {
-		$("#source").html(this.innerHTML);
+	$("#examples").on('click', 'li', function(e) {
+		console.log(e);
+		$("#source").html(e.target.innerHTML);
 	});
+
+	// Fetch random Wiki articles on load:
+	//$.get('/wikipedia/fr/2', resp => console.log(resp));
+	//$.get('/wikipedia/es/1', resp => console.log(resp));
+	//$.get('/wikipedia/de/1', resp => console.log(resp));
+	$.get('/wikipedia/it/1', resp => console.log(resp));
+	$.get('/wikipedia/sv/1', resp => console.log(resp));
+	$.get('/wikipedia/ru/1', resp => console.log(resp));
+	$.get('/wikipedia/el/1', resp => console.log(resp));
 
 
 //	$('form').submit(function(){
@@ -57,5 +67,11 @@ $(document).ready(function() {
 		//for (var word of Object.keys(freqs)) {
 		//	$("#tagged ruby rb").each()
 		//}
+	});
+
+	// Receive a wiki article from Node:
+	socket.on('wiki', function(resp) {
+		console.log(resp);
+		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
 	});
 });

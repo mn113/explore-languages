@@ -165,7 +165,7 @@ function getWordFreqs(words, lang) {
 		io.emit('freqs', freqDict);
 	});
 }
-getWordFreqs(['big','red','helicopter'], 'en');
+//getWordFreqs(['big','red','helicopter'], 'en');
 
 
 // ROUTES:
@@ -179,21 +179,25 @@ app.get('/', function(req, res) {
 // Serve random Wikipedia texts:
 app.get('/wikipedia/:lang/:num', function(req, res) {
 	console.log("Request received:", req.params);
+	var {lang, num} = req.params;
 	// Set up language-specific wiki fetcher:
-	var wp = wiki({ apiUrl: 'http://'+req.params.lang+'.wikipedia.org/w/api.php' });
+	var wp = wiki({ apiUrl: 'http://'+lang+'.wikipedia.org/w/api.php' });
 	// Get random titles:
-	wp.random(req.params.num).then(randomTitles => {
-		console.log(randomTitles);
-		// Get content from titles:
-		var contents = randomTitles.map(title => {
-			var content = wp.page(title).then(page => page.content());
-			return content;
-		});
-		return Promise.all(contents);
-	})
-	.then(console.log)	// OK
-	.then(res.send)		// ERROR COMES UP HERE?
-	.catch(err => console.log(157, err));
+	while (num > 0) {
+		wp.random().then(randTitle => {
+			console.log(randTitle);	// ok
+			// Get content from titles:
+			wp.page(randTitle)
+				.then(page => page.content())
+				.then(content => content.substring(0,200))
+				.then(text => {
+					console.log(text);
+					io.emit('wiki', {'lang': lang, 'text': text});
+				});
+		})
+		.catch(err => console.log(200, err));
+		num--;
+	}
 });
 
 // Language detection:
@@ -213,21 +217,7 @@ app.post('/frequencies', function(req, res) {
 	var wordlist = req.body.data.split(/\s/);
 		//.reduce(t => t.length > 2);
 	console.log(206, wordlist);
-	var freqStr = getWordFreqs(wordlist, lang.isoCode);
-	/*console.log("!", Object.keys(freqStr));
-	var freqList = JSON.parse(freqStr);
-	console.log(freqList);
-	var freqDict = {};
-	for (var pair of JSON.parse(freqStr)) {
-		var {word, score} = pair.split(" ");
-		console.log(word, score);
-		freqDict[word] = score;
-	}
-	console.log(Object.entries(freqDict));
-
-	io.emit('freqs', freqDict);
-	//res.send(freqs);
-	*/
+	getWordFreqs(wordlist, lang.isoCode);
 });
 
 // Process source text:
@@ -266,6 +256,7 @@ app.use(function(req, res) {
 	console.log("404 served");
 	res.status(404).send("Sorry can't find that!");
 });
+
 
 // SOCKET.IO SETUP
 io.on('connection', function(socket) {
