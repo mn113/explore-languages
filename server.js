@@ -13,6 +13,7 @@ const querystring = require('querystring');
 const conllu = require('conllu');
 const franc = require('franc-min');
 const gtr = require('google-translate-api');
+const wiki = require('wikijs').default;
 
 // Static assets to be served:
 app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
@@ -108,11 +109,13 @@ function renderHTML(conlluObj) {
 	return html;
 }
 
+// Generate token's tooltip content:
 function tokenTooltip(token) {
 	token.en = '?';//Promise.resolve(translateByGoogle(token.form));
 	return `${token.en} <br> ${token.lemma} | ${token.upostag} <br> ${token.feats}`;
 }
 
+// GTranslate a string:
 function translateByGoogle(input, toLang) {
 	return gtr(input, {to: 'en'}).then(res => {
 		return res.text;
@@ -128,16 +131,36 @@ function fetchVerbConj(verb, lang) {
 
 
 // ROUTES:
-// Serve static game page:
+// Serve index.html & accoutrements:
 app.get('/', function(req, res) {
-	console.log("Express serving index.html");	// NOT RUN
+	console.log("Express serving index.html");	// DOES NOT RUN
 	//res.render('/index.html');
 	res.sendFile(path.join(__dirname + '/public/index.html'));
 });
 
+// Serve Wikipedia texts:
+app.get('/wikipedia/:lang/:num', function(req, res) {
+	console.log("Request received:", req.params);
+	// Set up language-specific wiki fetcher:
+	var wp = wiki({ apiUrl: 'http://'+req.params.lang+'.wikipedia.org/w/api.php' });
+	// Get random titles:
+	wp.random(req.params.num).then(randomTitles => {
+		console.log(randomTitles);
+		// Get content from titles:
+		var contents = randomTitles.map(title => {
+			var content = wp.page(title).then(page => page.content());
+			return content;
+		});
+		return Promise.all(contents);
+	})
+	.then(console.log)	// OK
+	.then(res.send)		// ERROR COMES UP HERE?
+	.catch(err => console.log(157, err));
+});
+
 // Language detection:
 app.post('/detect', function(req, res) {
-	res.end(detectLang(req.body.data));
+	res.send(detectLang(req.body.data));
 });
 
 // Process source text:
@@ -159,7 +182,7 @@ app.post('/process', function(req, res) {
 			c.serial = udResult;	// HOW TO USE CONLLU MODULE WITH RESPONSE??
 			//console.log(c);
 			var html = renderHTML(c);
-			res.end(html);
+			res.send(html);
 		})
 		.catch(err => res.end(err));
 });
@@ -168,7 +191,7 @@ app.post('/process', function(req, res) {
 app.post('/translate', function(req, res) {
 	console.log('Got a POST request at /translate:', req.body);
 	Promise.resolve(translateByGoogle(req.body.data))
-		.then(translation => res.end(translation));
+		.then(translation => res.send(translation));
 });
 
 // Fallback:
