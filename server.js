@@ -22,8 +22,6 @@ const PythonShell = require('python-shell');
 
 // Static assets to be served:
 app.use(express.static(path.join(__dirname,'public')));
-//app.use(express.static(path.join(__dirname,'public/js')));
-//app.use(express.static(path.join(__dirname,'public/img')));
 app.use(favicon(path.join(__dirname,'public/img','favicon-edit.ico')));
 
 // Set up middleware:
@@ -152,13 +150,22 @@ function getWordFreqs(words, lang) {
 		args: words.concat(lang)
 	};
 
-	return PythonShell.run('wordfreqs.py', options, function(err, results) {
+	PythonShell.run('wordfreqs.py', options, function(err, results) {
 		if (err) throw err;
 		// results is an array consisting of messages collected during execution
 		console.log('wordfreqs.py results: %j', results);
-		return results;
+
+		var freqDict = {};
+		for (var pair of results) {
+			var [word, score] = pair.split(" ");
+			freqDict[word] = score;
+		}
+		console.log(freqDict);
+
+		io.emit('freqs', freqDict);
 	});
 }
+getWordFreqs(['big','red','helicopter'], 'en');
 
 
 // ROUTES:
@@ -193,7 +200,8 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 app.post('/detect', function(req, res) {
 	console.log('Got a POST request at /detect');
 	var lang = detectLang(req.body.data);
-	res.send(lang.modelName);
+	//res.send(lang.modelName);
+	io.emit('lang', lang);
 });
 
 // Frequency getter:
@@ -204,11 +212,22 @@ app.post('/frequencies', function(req, res) {
 	// Perform frequencies lookup:
 	var wordlist = req.body.data.split(/\s/);
 		//.reduce(t => t.length > 2);
-	console.log(203, wordlist);
-	var freqs = getWordFreqs(wordlist, lang.isoCode);
-	console.log(freqs);	// undefined
+	console.log(206, wordlist);
+	var freqStr = getWordFreqs(wordlist, lang.isoCode);
+	/*console.log("!", Object.keys(freqStr));
+	var freqList = JSON.parse(freqStr);
+	console.log(freqList);
+	var freqDict = {};
+	for (var pair of JSON.parse(freqStr)) {
+		var {word, score} = pair.split(" ");
+		console.log(word, score);
+		freqDict[word] = score;
+	}
+	console.log(Object.entries(freqDict));
 
-	res.send(freqs);
+	io.emit('freqs', freqDict);
+	//res.send(freqs);
+	*/
 });
 
 // Process source text:
@@ -242,11 +261,11 @@ app.post('/translate', function(req, res) {
 		.then(translation => res.send(translation));
 });
 
-// Fallback:
-//app.use(function(req, res) {
-//	console.log("404 served");
-//	res.status(404).send("Sorry can't find that!");
-//});
+// Fallback 404:
+app.use(function(req, res) {
+	console.log("404 served");
+	res.status(404).send("Sorry can't find that!");
+});
 
 // SOCKET.IO SETUP
 io.on('connection', function(socket) {

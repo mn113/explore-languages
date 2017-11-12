@@ -1,4 +1,6 @@
-/* global $, tippy */
+/* global $, tippy, io */
+
+var socket = io();
 
 // jQuery has loaded, document too:
 $(document).ready(function() {
@@ -40,4 +42,20 @@ $(document).ready(function() {
 	});
 
 
+//	$('form').submit(function(){
+//		socket.emit('chat message', $('#m').val());
+//		return false;
+//	});
+	socket.on('lang', function(lang) {
+		console.log(lang);
+		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
+	});
+
+	socket.on('freqs', function(freqs) {
+		console.log(freqs);
+		// Append the frequencies to the output text tooltips:
+		//for (var word of Object.keys(freqs)) {
+		//	$("#tagged ruby rb").each()
+		//}
+	});
 });
