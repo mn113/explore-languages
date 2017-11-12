@@ -106,10 +106,11 @@ function renderHTML(conlluObj, lang) {
 					else if (token.feats.includes("Case=Instr")) classes.push("instrumental");
 					else if (token.feats.includes("Case=Prep")) classes.push("prepositional");
 				}
-				html += `<ruby class="${classes.join(" ")}">
-				<rb title="${tokenTooltip(token)}">${token.form}</rb>
-				<rt>${token.en}</rt>
-				</ruby>`;
+				html += `<ruby class="${classes.join(" ")}" id="${lang.isoCode}_${token.form}">
+							<rb title="${tokenTooltip(token)}">${token.form}</rb>
+							<rt>${token.en}</rt>
+							<rt></rt>
+						</ruby>`;
 			}
 			// Space after by default:
 			if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";
@@ -189,7 +190,7 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 			// Get content from titles:
 			wp.page(randTitle)
 				.then(page => page.content())
-				.then(content => content.substring(0,200))
+				.then(content => content.substring(0,300))
 				.then(text => {
 					console.log(text);
 					io.emit('wiki', {'lang': lang, 'text': text});
@@ -214,9 +215,9 @@ app.post('/frequencies', function(req, res) {
 	var lang = detectLang(req.body.data);
 
 	// Perform frequencies lookup:
-	var wordlist = req.body.data.split(/\s/);
-		//.reduce(t => t.length > 2);
-	console.log(206, wordlist);
+	var wordlist = req.body.data.split(/\W/)
+		.reduce(t => t.length > 2);
+	console.log(220, wordlist);
 	getWordFreqs(wordlist, lang.isoCode);
 });
 
