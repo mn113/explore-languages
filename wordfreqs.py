@@ -13,11 +13,13 @@ def freq(word, lang):
 
 
 def main(argv):
-	#gr_words = ['μου', 'αρέσει', 'να', 'παρακολουθώ', 'τη', 'τηλεόραση', 'κάθε', 'ημέρα']
 	lang = argv[-1]
 	words = argv[:-1]
+	top5k = wf.top_n_list(lang, 5000)
 	for word in words:
-		print(word, freq(word, lang))
+		#print(word, freq(word, lang))
+		if word.lower() in top5k:
+			print(word, top5k.index(word.lower()) + 1)
 
 
 if __name__ == "__main__":

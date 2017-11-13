@@ -216,7 +216,7 @@ app.post('/frequencies', function(req, res) {
 
 	// Perform frequencies lookup:
 	var wordlist = req.body.data.split(/\W/)
-		.reduce(t => t.length > 2);
+		//.reduce(t => t.length > 2);
 	console.log(220, wordlist);
 	getWordFreqs(wordlist, lang.isoCode);
 });
