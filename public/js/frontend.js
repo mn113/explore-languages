@@ -99,3 +99,17 @@ $(document).ready(function() {
 		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
 	});
 });
+
+function lookupWord(word, lang, source) {
+	// Go through Node at all? NO
+	var glosbeUrl = "https://glosbe.com/gapi/translate?from="+lang+"&dest=eng&format=json&phrase="+word+"&pretty=true&callback=bob";
+	$.get(glosbeUrl, function(resp) {
+		console.log('R', resp);
+	});
+	//const bob = console.log;
+
+	// Load WR in an iframe:
+	var wordrefUrl = "http://www.wordreference.com/iten/cazzo";
+	$("#guest_frame").attr("src", wordrefUrl);
+}
+lookupWord('chameau', 'fra', 'glosbe');
