@@ -168,6 +168,17 @@ function getWordFreqs(words, lang) {
 }
 //getWordFreqs(['big','red','helicopter'], 'en');
 
+// Count occurrences of each word:
+function countWords(words) {
+	var counts = {};
+	for (var i = 0; i < words.length; i++) {
+		var word = words[i];
+		if (Object.keys(counts).includes(word)) counts[word] += 1;
+		else counts[word] = 1;
+	}
+	return counts;
+}
+
 
 // ROUTES:
 // Serve index.html & accoutrements:
