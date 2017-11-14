@@ -79,14 +79,13 @@ ul#examples {
 #examples li:hover {
 	color: blue;
 }
-#examples li:before { margin-right: 0.6em; }
-#examples .fr:before { content: '🇨🇵'; }
-#examples .es:before { content: '🇪🇦'; }
-#examples .de:before { content: '🇩🇪'; }
-#examples .ru:before { content: '🇷🇺'; }
-#examples .it:before { content: '🇮🇹'; }
-#examples .sv:before { content: '🇸🇪'; }
-#examples .el:before { content: '🇬🇷'; }
+.fr:before { content: '🇨🇵'; margin-right: 0.6em; }
+.es:before { content: '🇪🇦'; margin-right: 0.6em; }
+.de:before { content: '🇩🇪'; margin-right: 0.6em; }
+.ru:before { content: '🇷🇺'; margin-right: 0.6em; }
+.it:before { content: '🇮🇹'; margin-right: 0.6em; }
+.sv:before { content: '🇸🇪'; margin-right: 0.6em; }
+.el:before { content: '🇬🇷'; margin-right: 0.6em; }
 
 #panel {
 	position: absolute;

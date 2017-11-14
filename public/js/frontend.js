@@ -1,16 +1,16 @@
 /* global $, tippy, io */
 
 var socket = io();
+var lang = 'en';	// cookie or ls?
 
 // jQuery has loaded, document too:
 $(document).ready(function() {
 
-	// Analyse!-button behaviour:
+	// Do it!-button behaviour:
 	$("#goBtn").on('click', function(e) {
 		e.preventDefault();
 
 		var text = $("#source").html();
-		var lang;
 
 		$.post('/detect', {data: text}, function(resp) {
 			console.log("Server response", resp);
@@ -37,7 +37,7 @@ $(document).ready(function() {
 		});
 	});
 
-	// Toggles:
+	// Toggles: TODO: consolidate eventListeners
 	$("input[name=showperword]").on('click', function() {
 		if (this.checked) $("#tagged ruby rb:first-of-type").css("display: block");
 		else $("#tagged ruby rb:first-of-type").css("display: none");
@@ -58,6 +58,8 @@ $(document).ready(function() {
 		//else $("#tagged ruby rb:first-of-type").css("display: none");
 	});
 
+
+	// Panel behaviour:
 	$("#panelToggle").on('click', function() {
 		$("#panel").toggleClass("open");
 	});
@@ -71,19 +73,17 @@ $(document).ready(function() {
 	});
 
 
-	// Examples loader:
-	$("#examples").on('click', 'li', function(e) {
-		$("#source").html(e.target.innerHTML);
+	// Load example articles when dropdown changes:
+	$("header select").on('change', function() {
+		console.log(this.value);
+		lang = this.value;
+		$.get('/wikipedia/'+lang+'/3', resp => console.log(resp));
 	});
 
-	// Fetch random Wiki articles on load:
-	$.get('/wikipedia/fr/1', resp => console.log(resp));
-	$.get('/wikipedia/es/1', resp => console.log(resp));
-	$.get('/wikipedia/de/1', resp => console.log(resp));
-	//$.get('/wikipedia/it/1', resp => console.log(resp));
-	//$.get('/wikipedia/sv/1', resp => console.log(resp));
-	//$.get('/wikipedia/ru/1', resp => console.log(resp));
-	$.get('/wikipedia/el/1', resp => console.log(resp));
+	// Examples loader:
+	$("#examples").on('click', 'li', function(e) {
+		$("#source").html(e.target.innerHTML).addClass($(this).data("lang"));
+	});
 
 
 //	$('form').submit(function(){
@@ -93,7 +93,7 @@ $(document).ready(function() {
 	socket.on('lang', function(lang) {
 		console.log(lang);
 		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
-		$("#output").data("lang", lang.isoCode);
+		$("#output").data("lang", lang.isoCode).addClass(lang.isoCode);
 	});
 
 	socket.on('freqs', function(freqs) {
@@ -114,7 +114,7 @@ $(document).ready(function() {
 	// Load external pages:
 	$("#wr_frame").attr("src", "http://www.wordreference.com");
 	$("#leo_frame").attr("src", "http://dict.leo.org");
-	//$("#lexi_frame").attr("src", "http://www.lexilogos.com");
+	//$("#lexi_frame").attr("src", "http://www.lexilogos.com");	FIXME: takes over my page
 	$("#verbix_frame").attr("src", "http://www.verbix.com");
 
 });
