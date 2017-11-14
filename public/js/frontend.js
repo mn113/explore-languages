@@ -3,6 +3,17 @@
 var socket = io();
 var lang = 'en';	// cookie or ls?
 
+var resources = {
+	wordref: {
+		supported: ['fr','es','it','pt','de','nl','sv','ru','pl','cz','ro','tr','ar','zh','jp','ko'],
+		baseUrl: "http://www.wordreference.com/",
+		queryString: term => lang+"en/"+term,
+//		searchUrl: term => { this.supported.includes(lang) ? }
+		cat: "definicio/%term%"
+	},
+	leo: {},
+};
+
 // jQuery has loaded, document too:
 $(document).ready(function() {
 
@@ -30,7 +41,7 @@ $(document).ready(function() {
 		});
 
 		$.post('/process', {data: text}, function(resp) {
-			console.log("Server response", resp);
+			//console.log("Server response", resp);
 			$("#tagged").html(resp);
 			// Generate token tooltips:
 			tippy("rb");
@@ -61,8 +72,7 @@ $(document).ready(function() {
 
 	// Panel behaviour:
 	$("#panelToggle").on('click', function() {
-		$("#panel").toggleClass("open");
-		$("#panelToggle").toggleClass("open");
+		$("#panel, #panelToggle").toggleClass("open");
 	});
 
 	$("#panel li").on('click', function() {
@@ -118,9 +128,16 @@ $(document).ready(function() {
 	//$("#lexi_frame").attr("src", "http://www.lexilogos.com");	FIXME: takes over my page
 	$("#verbix_frame").attr("src", "http://www.verbix.com");
 
+	// Make words clickable:
+	$("#tagged").on('click', 'rb', function() {
+		console.log(this);
+		// Should lookup be done by click, by contextual menu or by tool?
+		lookupWord(this.innerHTML);
+	});
+
 });
 
-function lookupWord(word, lang, source) {
+function lookupWord(word, source) {
 	// Go through Node at all? NO
 	var glosbeUrl = "https://glosbe.com/gapi/translate?from="+lang+"&dest=eng&format=json&phrase="+word+"&pretty=true&callback=bob";
 	$.get(glosbeUrl, function(resp) {
@@ -128,8 +145,17 @@ function lookupWord(word, lang, source) {
 	});
 	//const bob = console.log;
 
-	// Load WR in an iframe:
-	var wordrefUrl = "http://www.wordreference.com/iten/cazzo";
-	$("#wr_frame").attr("src", wordrefUrl);
+	// Load WR lookup in an iframe:
+	if (resources.wordref.supported.includes(lang)) {
+		$("#wr_frame").attr("src", resources.wordref.baseUrl + resources.wordref.queryString(word));
+		focusTab('wr');
+	}
+
 }
-lookupWord('chameau', 'fra', 'glosbe');
+
+function focusTab(tab) {
+	$("#panel, #panelToggle").addClass("open");
+	$("#panel section").hide();
+	$("#panel").find("#"+tab+"_tab").show();
+
+}

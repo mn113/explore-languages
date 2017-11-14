@@ -60,31 +60,30 @@
 	<aside id="panel">
 		<nav>
 			<ul id="tabs">
-				<li>WR</li>
-				<li>LEO</li>
-				<li>LL</li>
-				<li>Vb</li>
-				<li>Words</li>
-				<li>Saved</li>
+				<li data-target="wr_tab">WR</li>
+				<li data-target="leo_tab">LEO</li>
+				<li data-target="lexi_tab">LL</li>
+				<li data-target="verbix_tab">Vb</li>
+				<li data-target="textwords_tab">Text Words</li>
+				<li data-target="saved_tab">Saved</li>
 			</ul>
 		</nav>
-		<!-- number and order of sections must match up with number and order of tabs -->
-		<section>
+		<section id="wr_tab">
 			<iframe id="wr_frame" src="" width="100%" height="100%"></iframe>
 		</section>
-		<section>
+		<section id="leo_tab">
 			<iframe id="leo_frame" src="" width="100%" height="100%"></iframe>
 		</section>
-		<section>
+		<section id="lexi_tab">
 			<iframe id="lexi_frame" src="" width="100%" height="100%"></iframe>
 		</section>
-		<section>
+		<section id="verbix_tab">
 			<iframe id="verbix_frame" src="" width="100%" height="100%"></iframe>
 		</section>
-		<section>
-			<h3>Words</h3>
+		<section id="textwords_tab">
+			<h3>Text Words</h3>
 		</section>
-		<section>
+		<section id="saved_tab">
 			<h3>Saved</h3>
 		</section>
 	</aside>

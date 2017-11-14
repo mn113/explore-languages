@@ -17,6 +17,10 @@ h1,h2,h3 {
 	font-family: Helvetica, Arial, sans-serif;
 }
 
+
+/**************/
+/* TEXT AREAS */
+/**************/
 #source, #output {
 	border: 1px solid #666;
 	padding: 1em;
@@ -30,6 +34,12 @@ h1,h2,h3 {
 	color: #666;
 	font-family: Helvetica, Arial, sans-serif;
 }
+#tagged ruby:hover {
+	background: yellow;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
 
 #goBtn {
 	text-align: center;
@@ -39,16 +49,22 @@ h1,h2,h3 {
 	padding: 0.6em 1.2em;
 }
 
+
+/***********/
+/* GRAMMAR */
+/***********/
 .VERB, .AUX {
 	color: forestgreen;
 }
 .NOUN {
 	color: red;
 }
+.PROPN {
+	font-weight: bold;
+}
 .ADJ {
 	color: coral;
 }
-
 .fem:after { content: '♀' ; font-size: 0.7em; vertical-align: sub; color: hotpink; }
 .masc:after { content: '♂' ; font-size: 0.7em; vertical-align: sub; color: dodgerblue; }
 .neuter:after { content: '⚲' ; font-size: 0.7em; vertical-align: sub; color: darkgoldenrod; }
@@ -60,6 +76,7 @@ h1,h2,h3 {
 .dative		{ background: rgba(255,0,0,0.2); }
 .instrumental 	{ background: rgba(180,0,255,0.2); }
 .prepositional	{ background: rgba(255,0,180,0.2); }
+
 
 ul#examples {
 	display: flex;
@@ -87,8 +104,12 @@ ul#examples {
 .sv:before { content: '🇸🇪'; margin-right: 0.6em; }
 .el:before { content: '🇬🇷'; margin-right: 0.6em; }
 
+
+/**************/
+/* SIDE PANEL */
+/**************/
 #panel {
-	position: absolute;
+	position: fixed;
 	top: 0;
 	right: 0;
 	height: 100%;
