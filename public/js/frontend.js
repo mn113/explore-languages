@@ -58,6 +58,18 @@ $(document).ready(function() {
 		//else $("#tagged ruby rb:first-of-type").css("display: none");
 	});
 
+	$("#panelToggle").on('click', function() {
+		$("#panel").toggleClass("open");
+	});
+
+	$("#panel li").on('click', function() {
+		// Show and hide tab sections based on list index:
+		var num = Array.prototype.indexOf.call($("#panel li"), this) + 1;
+		console.log(num);
+		$("#panel section").hide();
+		$("#panel section:nth-of-type("+num+")").show();
+	});
+
 
 	// Examples loader:
 	$("#examples").on('click', 'li', function(e) {
@@ -98,6 +110,13 @@ $(document).ready(function() {
 		console.log(resp);
 		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
 	});
+
+	// Load external pages:
+	$("#wr_frame").attr("src", "http://www.wordreference.com");
+	$("#leo_frame").attr("src", "http://dict.leo.org");
+	//$("#lexi_frame").attr("src", "http://www.lexilogos.com");
+	$("#verbix_frame").attr("src", "http://www.verbix.com");
+
 });
 
 function lookupWord(word, lang, source) {
@@ -110,6 +129,6 @@ function lookupWord(word, lang, source) {
 
 	// Load WR in an iframe:
 	var wordrefUrl = "http://www.wordreference.com/iten/cazzo";
-	$("#guest_frame").attr("src", wordrefUrl);
+	$("#wr_frame").attr("src", wordrefUrl);
 }
 lookupWord('chameau', 'fra', 'glosbe');

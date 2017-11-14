@@ -91,8 +91,48 @@ ul#examples {
 #panel {
 	position: absolute;
 	top: 0;
-	right: -200px;
-	width: 250px;
-	border: 1px solid fuchsia;
-	padding: 1em;
+	right: 0;
+	width: 2px;
+	height: 100%;
+	border: 1px solid black;
+	background: white;
+	padding: 0;
+}
+#panel.open {
+	width: 50vw;
+}
+#panel iframe {
+	width: calc(100% - 4px);
+	height: 90vh;
+}
+#panel nav {
+
+}
+ul#tabs {
+	display: flex;
+	xflex-direction: row;
+	xflex-wrap: nowrap;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+#tabs li {
+	width: 15%;
+	border: 1px solid #999;
+	border-left: 0;
+	padding: 0.3em 0.5em;
+}
+#panel section {
+	display: none;
+}
+#panelToggle {
+	position: absolute;
+	top: 0.5em;
+	right: 0.5em;
+	height: 2em;
+	width: 2em;
+	border: 1px solid #666;
+	background: white;
+	color: #666;
+	z-index: 1;
 }
