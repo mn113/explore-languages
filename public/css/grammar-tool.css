@@ -91,11 +91,12 @@ ul#examples {
 	position: absolute;
 	top: 0;
 	right: 0;
-	width: 2px;
 	height: 100%;
 	border: 1px solid black;
 	background: white;
 	padding: 0;
+	width: 2px;
+	transition: width 0.2s;
 }
 #panel.open {
 	width: 50vw;
@@ -128,10 +129,18 @@ ul#tabs {
 	position: absolute;
 	top: 0.5em;
 	right: 0.5em;
-	height: 2em;
-	width: 2em;
+	height: 24px;
+	width: 24px;
+	font-size: 20px;
+	text-align: center;
 	border: 1px solid #666;
+	border-radius: 4px;
 	background: white;
-	color: #666;
+	color: #333;
 	z-index: 1;
+	transform: scaleX(1);
+	transition: transform 0.2s;
+}
+#panelToggle.open {
+	transform: scaleX(-1);
 }

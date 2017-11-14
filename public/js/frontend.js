@@ -62,6 +62,7 @@ $(document).ready(function() {
 	// Panel behaviour:
 	$("#panelToggle").on('click', function() {
 		$("#panel").toggleClass("open");
+		$("#panelToggle").toggleClass("open");
 	});
 
 	$("#panel li").on('click', function() {
