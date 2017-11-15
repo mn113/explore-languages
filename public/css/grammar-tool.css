@@ -96,14 +96,21 @@ ul#examples {
 #examples li:hover {
 	color: blue;
 }
-.fr:before { content: '🇨🇵'; margin-right: 0.6em; }
-.es:before { content: '🇪🇦'; margin-right: 0.6em; }
+.ca:before { content: '🏁'; margin-right: 0.6em; }
+.da:before { content: '🇩🇰'; margin-right: 0.6em; }
 .de:before { content: '🇩🇪'; margin-right: 0.6em; }
-.ru:before { content: '🇷🇺'; margin-right: 0.6em; }
-.it:before { content: '🇮🇹'; margin-right: 0.6em; }
-.sv:before { content: '🇸🇪'; margin-right: 0.6em; }
 .el:before { content: '🇬🇷'; margin-right: 0.6em; }
-
+.en:before { content: '🇬🇧'; margin-right: 0.6em; }
+.es:before { content: '🇪🇦'; margin-right: 0.6em; }
+.fi:before { content: '🇫🇮'; margin-right: 0.6em; }
+.fr:before { content: '🇨🇵'; margin-right: 0.6em; }
+.it:before { content: '🇮🇹'; margin-right: 0.6em; }
+.nl:before { content: '🇳🇱'; margin-right: 0.6em; }
+.no:before { content: '🇳🇴'; margin-right: 0.6em; }
+.sv:before { content: '🇸🇪'; margin-right: 0.6em; }
+.pt:before { content: '🇵🇹'; margin-right: 0.6em; }
+.ru:before { content: '🇷🇺'; margin-right: 0.6em; }
+.tr:before { content: '🇹🇷'; margin-right: 0.6em; }
 
 /**************/
 /* SIDE PANEL */

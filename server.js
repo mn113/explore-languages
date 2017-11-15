@@ -87,6 +87,7 @@ function renderHTML(conlluObj, lang) {
 		for (var j = 0; j < s.tokens.length; j++) {
 			var token = s.tokens[j];
 			//console.log(token);
+			// BUG: GT does not work on these words...
 			token.en = Promise.resolve(translateByGoogle(token.form));
 			// Build the token's HTML tag:
 			if (['PUNCT', 'NUM'].includes(token.upostag)) {
@@ -107,7 +108,7 @@ function renderHTML(conlluObj, lang) {
 					else if (token.feats.includes("Case=Prep")) classes.push("prepositional");
 				}
 				html += `<ruby class="${classes.join(" ")}" id="${lang.isoCode}_${token.form}">
-							<rb title="${tokenTooltip(token)}">${token.form}</rb>
+							<rb title="${tokenTooltip(token)}" data-lemma="${token.lemma}">${token.form}</rb>
 							<rt>${token.en}</rt>
 							<rt></rt>
 						</ruby>`;

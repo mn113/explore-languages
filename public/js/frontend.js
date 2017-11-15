@@ -159,7 +159,7 @@ $(document).ready(function() {
 	$("#tagged").on('click', 'rb', function() {
 		// Should lookup be done by simple click, by contextual menu or by tool?
 		lookups.glosbe(this.innerHTML);
-		lookups.verbix(this.innerHTML);
+		lookups.verbix($(this).data("lemma"));
 	});
 
 });
@@ -178,9 +178,9 @@ var lookups = {
 			var vlang = resources.verbix.langs[lang];
 			// Build URL:
 			var baseUrl = "https://api.verbix.com/conjugator/html?";
-			var qlang = "lang="+vlang;
-			var qverb = "verb="+verb;
+			var qlang = "language="+vlang;
 			var qtable = "tableurl=http://tools.verbix.com/webverbix/personal/template.htm";
+			var qverb = "verb="+verb;
 			var fullUrl = baseUrl + [qlang, qtable, qverb].join("&");
 			console.log(fullUrl);
 			// Load content into frame:
@@ -191,6 +191,7 @@ var lookups = {
 
 	glosbe: function(word) {
 		var glosbeUrl = "https://glosbe.com/gapi/translate?from="+lang+"&dest=eng&format=json&phrase="+word+"&pretty=true&callback=bob";
+		//FIXME: Glosbe API not reachable due to CORS from 127.0.0.1
 		$.get(glosbeUrl, function(resp) {
 			console.log('R', resp);
 		});
