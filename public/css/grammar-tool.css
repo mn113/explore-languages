@@ -65,17 +65,17 @@ h1,h2,h3 {
 .ADJ {
 	color: coral;
 }
-.fem:after { content: '♀' ; font-size: 0.7em; vertical-align: sub; color: hotpink; }
-.masc:after { content: '♂' ; font-size: 0.7em; vertical-align: sub; color: dodgerblue; }
-.neuter:after { content: '⚲' ; font-size: 0.7em; vertical-align: sub; color: darkgoldenrod; }
-.common:after { content: 'c' ; font-size: 0.7em; vertical-align: sub; color: black; }
+.genders_on .fem:after { content: '♀' ; font-size: 0.7em; vertical-align: sub; color: hotpink; }
+.genders_on .masc:after { content: '♂' ; font-size: 0.7em; vertical-align: sub; color: dodgerblue; }
+.genders_on .neuter:after { content: '⚲' ; font-size: 0.7em; vertical-align: sub; color: darkgoldenrod; }
+.genders_on .common:after { content: 'c' ; font-size: 0.7em; vertical-align: sub; color: black; }
 
-.nominative { background: rgba(0,0,255,0.2); }
-.accusative { background: rgba(65,255,0,0.2); }
-.genitive 	{ background: rgba(255,200,0,0.2); }
-.dative		{ background: rgba(255,0,0,0.2); }
-.instrumental 	{ background: rgba(180,0,255,0.2); }
-.prepositional	{ background: rgba(255,0,180,0.2); }
+.cases_on .nominative { background: rgba(0,0,255,0.2); }
+.cases_on .accusative { background: rgba(65,255,0,0.2); }
+.cases_on .genitive 	{ background: rgba(255,200,0,0.2); }
+.cases_on .dative		{ background: rgba(255,0,0,0.2); }
+.cases_on .instrumental 	{ background: rgba(180,0,255,0.2); }
+.cases_on .prepositional	{ background: rgba(255,0,180,0.2); }
 
 
 ul#examples {

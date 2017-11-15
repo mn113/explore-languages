@@ -43,6 +43,8 @@ var resources = {
 // jQuery has loaded, document too:
 $(document).ready(function() {
 
+	var $tagged = $("#tagged");
+
 	// Do it!-button behaviour:
 	$("#goBtn").on('click', function(e) {
 		e.preventDefault();
@@ -61,56 +63,66 @@ $(document).ready(function() {
 			$("#translated").html(resp);
 		});
 
+		// FIXME: unnecessary request?
 		$.post('/frequencies', {data: text}, function(resp) {
 			console.log("Server response", resp);
 			// Response handled by socket.on
 		});
 
 		$.post('/process', {data: text}, function(resp) {
-			//console.log("Server response", resp);
-			$("#tagged").html(resp);
+			$tagged.html(resp);
 			// Generate token tooltips:
 			tippy("rb");
 		});
 	});
 
-	// Toggles: TODO: consolidate eventListeners
-	$("input[name=showperword]").on('click', function() {
-		if (this.checked) $("#tagged ruby rb:first-of-type").css("display: block");
-		else $("#tagged ruby rb:first-of-type").css("display: none");
+	// Grammar display toggles:
+	$("input").on('change', function() {
+		switch ($(this).attr("name")) {
+			case "showperword":
+				if (this.checked) $tagged.find("ruby rt:first-of-type").show();
+				else $tagged.find("ruby rt:first-of-type").hide();
+				break;
+
+			case "showranks":
+				if (this.checked) $tagged.find("ruby rt:last-of-type").show();
+				else $tagged.find("ruby rt:last-of-type").hide();
+				break;
+
+			case "showgenders":
+				if (this.checked) $tagged.addClass("genders_on");
+				else $tagged.removeClass("genders_on");
+				break;
+
+			case "showcases":
+				if (this.checked) $tagged.addClass("cases_on");
+				else $tagged.removeClass("cases_on");
+				break;
+
+			default:
+				console.log(this);
+				break;
+		}
 	});
 
-	$("input[name=showranks]").on('click', function() {
-		if (this.checked) $("#tagged ruby rb:last-of-type").css("display: block");
-		else $("#tagged ruby rb:last-of-type").css("display: none");
-	});
 
-	$("input[name=showgenders]").on('click', function() {
-		//if (this.checked) $("#tagged ruby rb:first-of-type").css("display: block");
-		//else $("#tagged ruby rb:first-of-type").css("display: none");
-	});
-
-	$("input[name=showcases]").on('click', function() {
-		//if (this.checked) $("#tagged ruby rb:first-of-type").css("display: block");
-		//else $("#tagged ruby rb:first-of-type").css("display: none");
-	});
-
-
-	// Panel behaviour:
+	// Panel behaviours:
 	$("#panelToggle").on('click', function() {
 		$("#panel, #panelToggle").toggleClass("open");
 	});
-
 	$("#panel li").on('click', function() {
-		// Show and hide tab sections based on list index:
+		// Show and hide tab sections based on list id:
+		var target = $(this).attr("id");
 		var num = Array.prototype.indexOf.call($("#panel li"), this) + 1;
 		console.log(num);
 		$("#panel section").hide();
-		$("#panel section:nth-of-type("+num+")").show();
+		$("#panel #"+target).show();
 	});
 
 
 	// Load example articles when dropdown changes:
+	// TODO: save these for some time
+	// TODO: delete and remember bad ones
 	$("header select").on('change', function() {
 		console.log(this.value);
 		lang = this.value;
@@ -123,16 +135,14 @@ $(document).ready(function() {
 	});
 
 
-//	$('form').submit(function(){
-//		socket.emit('chat message', $('#m').val());
-//		return false;
-//	});
+	// Receive franc-detected language from Node:
 	socket.on('lang', function(lang) {
 		console.log(lang);
 		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
 		$("#output").data("lang", lang.isoCode).addClass(lang.isoCode);
 	});
 
+	// Receive word frequencies from Node:
 	socket.on('freqs', function(freqs) {
 		console.log(freqs);
 		var lang = $("#output").data("lang") || '';
@@ -142,17 +152,16 @@ $(document).ready(function() {
 		}
 	});
 
-	// Receive a wiki article from Node:
+	// Receive a new wiki article from Node:
 	socket.on('wiki', function(resp) {
 		console.log(resp);
 		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
 	});
 
 	// Load external pages:
-	$("#wr_frame").attr("src", "http://www.wordreference.com");
-	$("#leo_frame").attr("src", "http://dict.leo.org");
-	//$("#lexi_frame").attr("src", "http://www.lexilogos.com");	FIXME: takes over my page
-	$("#verbix_frame").attr("src", "http://www.verbix.com");
+	//$("#wr_frame").attr("src", "http://www.wordreference.com");
+	//$("#leo_frame").attr("src", "http://dict.leo.org");
+	//$("#verbix_frame").attr("src", "http://www.verbix.com");
 
 
 	// Make words clickable:
@@ -164,6 +173,13 @@ $(document).ready(function() {
 
 });
 
+function focusTab(tab) {
+	$("#panel, #panelToggle").addClass("open");
+	$("#panel section").hide();
+	$("#panel").find("#"+tab+"_tab").show();
+
+}
+
 var lookups = {
 	wr: function(word) {
 		// Load WR lookup in an iframe:
@@ -171,6 +187,10 @@ var lookups = {
 			$("#wr_frame").attr("src", resources.wordref.baseUrl + resources.wordref.queryString(word));
 			focusTab('wr');
 		}
+	},
+
+	leo: function(word) {
+
 	},
 
 	verbix: function(verb) {	// FIXME: needs infinitive / lemma form (in tooltip)
@@ -197,10 +217,3 @@ var lookups = {
 		});
 	}
 };
-
-function focusTab(tab) {
-	$("#panel, #panelToggle").addClass("open");
-	$("#panel section").hide();
-	$("#panel").find("#"+tab+"_tab").show();
-
-}
