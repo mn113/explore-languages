@@ -147,7 +147,7 @@ ul#tabs {
 	display: none;
 }
 #panelToggle {
-	position: absolute;
+	position: fixed;
 	top: 0.5em;
 	right: 0.5em;
 	height: 24px;

@@ -12,7 +12,33 @@ var resources = {
 		cat: "definicio/%term%"
 	},
 	leo: {},
+	verbix: {
+		langs: {
+			ca:	'cat',
+			da:	'dan',
+			de:	'deu',
+			en:	'eng',
+			es:	'spa',
+			fi:	'fin',
+			fr:	'fra',
+			hu:	'hun',
+			is:	'isl',
+			it:	'ita',
+			jp:	'jpn',
+			ko:	'kor',
+			lt:	'lit',
+			nl:	'nld',
+			no:	'nob',
+			pt:	'por',
+			ro:	'ron',
+			ru:	'rus',
+			sv:	'swe',
+			tr:	'tur',
+			ua:	'ukr'
+		}
+	}
 };
+
 
 // jQuery has loaded, document too:
 $(document).ready(function() {
@@ -128,30 +154,48 @@ $(document).ready(function() {
 	//$("#lexi_frame").attr("src", "http://www.lexilogos.com");	FIXME: takes over my page
 	$("#verbix_frame").attr("src", "http://www.verbix.com");
 
+
 	// Make words clickable:
 	$("#tagged").on('click', 'rb', function() {
-		console.log(this);
-		// Should lookup be done by click, by contextual menu or by tool?
-		lookupWord(this.innerHTML);
+		// Should lookup be done by simple click, by contextual menu or by tool?
+		lookups.glosbe(this.innerHTML);
+		lookups.verbix(this.innerHTML);
 	});
 
 });
 
-function lookupWord(word, source) {
-	// Go through Node at all? NO
-	var glosbeUrl = "https://glosbe.com/gapi/translate?from="+lang+"&dest=eng&format=json&phrase="+word+"&pretty=true&callback=bob";
-	$.get(glosbeUrl, function(resp) {
-		console.log('R', resp);
-	});
-	//const bob = console.log;
+var lookups = {
+	wr: function(word) {
+		// Load WR lookup in an iframe:
+		if (resources.wordref.supported.includes(lang)) {
+			$("#wr_frame").attr("src", resources.wordref.baseUrl + resources.wordref.queryString(word));
+			focusTab('wr');
+		}
+	},
 
-	// Load WR lookup in an iframe:
-	if (resources.wordref.supported.includes(lang)) {
-		$("#wr_frame").attr("src", resources.wordref.baseUrl + resources.wordref.queryString(word));
-		focusTab('wr');
+	verbix: function(verb) {	// FIXME: needs infinitive / lemma form (in tooltip)
+		if (Object.keys(resources.verbix.langs).includes(lang)) {
+			var vlang = resources.verbix.langs[lang];
+			// Build URL:
+			var baseUrl = "https://api.verbix.com/conjugator/html?";
+			var qlang = "lang="+vlang;
+			var qverb = "verb="+verb;
+			var qtable = "tableurl=http://tools.verbix.com/webverbix/personal/template.htm";
+			var fullUrl = baseUrl + [qlang, qtable, qverb].join("&");
+			console.log(fullUrl);
+			// Load content into frame:
+			$("#verbix_frame").attr("src", fullUrl);
+			focusTab('verbix');
+		}
+	},
+
+	glosbe: function(word) {
+		var glosbeUrl = "https://glosbe.com/gapi/translate?from="+lang+"&dest=eng&format=json&phrase="+word+"&pretty=true&callback=bob";
+		$.get(glosbeUrl, function(resp) {
+			console.log('R', resp);
+		});
 	}
-
-}
+};
 
 function focusTab(tab) {
 	$("#panel, #panelToggle").addClass("open");
