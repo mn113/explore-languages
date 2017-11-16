@@ -15,6 +15,7 @@
   "author": "Martin Nicholson",
   "license": "MIT",
   "dependencies": {
+    "better-console": "^1.0.1",
     "body-parser": "^1.17.2",
     "conllu": "^0.1.2",
     "cors": "^2.8.3",
@@ -28,6 +29,7 @@
     "redis": "^2.8.0",
     "serve-favicon": "^2.4.3",
     "socket.io": "^2.0.4",
+    "striptags": "^3.1.0",
     "wikijs": "^4.4.0"
   },
   "eslintConfig": {

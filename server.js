@@ -18,6 +18,8 @@ const franc = require('franc-min');
 const gtr = require('google-translate-api');
 const wiki = require('wikijs').default;
 const PythonShell = require('python-shell');
+const striptags = require('striptags');
+var console = require('better-console');
 
 
 // Static assets to be served:
@@ -32,14 +34,16 @@ app.use(bodyParser.json()); 	// for parsing application/json
 
 // REDIS:
 var redis = require('redis');
-var redisClient = redis.createClient({host : 'localhost', port : 6379});
+var redisClient = redis.createClient({host: 'localhost', port: 6379});
 
-redisClient.on('ready',function() {
-	console.log("Redis is ready");
+redisClient.on('ready', function() {
+	console.info("Redis is ready");
 });
-
-redisClient.on('error',function() {
-	console.log("Error in Redis");
+redisClient.on('error', function() {
+	console.error("Error in Redis");
+});
+redisClient.on('warning', function() {
+	console.error("Redis Warning");
 });
 
 // Short & sweet hash maker:
@@ -90,7 +94,7 @@ function detectLang(text) {
 		'ron': ['romanian','ro'],
 		'unk': ['unknown', 'en']
 	};
-	console.log(languageCodes[topMatch][0], 'detected');
+	console.info(languageCodes[topMatch][0], 'detected');
 	return {
 		modelName: languageCodes[topMatch][0],
 		isoCode: languageCodes[topMatch][1]
@@ -174,7 +178,7 @@ function translateByGoogle(input, toLang) {
 	});
 }
 
-// Fetch a verb conjugation:
+// Fetch a verb conjugation: // FRONTEND ONLY
 function fetchVerbConj(verb, lang) {
 	return verb;
 }
@@ -199,9 +203,9 @@ function getWordFreqs(text, words, lang) {
 			var [word, score] = pair.split(" ");
 			freqDict[word] = score;
 		}
-		console.log(freqDict);
+		console.dir(freqDict);
 
-		console.log(cefr_level(text, freqDict));
+		console.dir(cefr_level(text, freqDict));
 
 		io.emit('freqs', freqDict);
 	});
@@ -277,6 +281,7 @@ function cefr_level(text, freqDict) {
 	};
 }
 
+
 // ROUTES:
 // Serve index.html & accoutrements:
 app.get('/', function(req, res) {
@@ -305,7 +310,7 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 					io.emit('wiki', {lang: lang, text: text, level: cefr});
 				});
 		})
-		.catch(err => console.log(200, err));
+		.catch(err => console.error(200, err));
 		num--;
 	}
 });
@@ -326,7 +331,7 @@ app.post('/frequencies', function(req, res) {
 	// Perform frequencies lookup:
 	var wordlist = req.body.data.split(/\W/);
 		//.reduce(t => t.length > 2);	//FIXME: problem ignoring low lengths
-	console.log(220, wordlist);
+	//console.log(220, wordlist);
 	getWordFreqs(req.body.data, wordlist, lang.isoCode);
 });
 
@@ -343,7 +348,7 @@ app.post('/process', function(req, res) {
 		.then(json => {
 			// We have the tagged sentence(s) but in a nasty format
 			var udResult = json.result;
-			console.log(udResult);
+			//console.log(udResult);
 			// Instantiate a ConLLU interpreter:
 			var conObj = new conllu.Conllu();
 			conObj.serial = udResult;	// HOW TO USE CONLLU MODULE WITH RESPONSE??
@@ -357,8 +362,28 @@ app.post('/process', function(req, res) {
 // Translate source text:
 app.post('/translate', function(req, res) {
 	console.log('Got a POST request at /translate:', req.body);
-	Promise.resolve(translateByGoogle(req.body.data))
-		.then(translation => res.send(translation));
+	var text = striptags(req.body.data);
+	var translated = '';
+	// Redis:
+	var tid = text.hashCode();
+	console.log('tid', tid);
+	redisClient.hgetall(tid, function(err,obj) {
+		console.dir('hgetall', obj);
+	});
+	if (redisClient.hexists(tid, 'gtranslate')) {	// BUG: FALSE POSITIVE?
+		translated = redisClient.hget(tid, 'gtranslate', redis.print);
+		console.log("retrieving record #", tid, translated);
+	}
+	else {
+		translated = translateByGoogle(text)
+			.then(trans => {
+				redisClient.hset(tid, 'gtranslate', trans, redis.print);
+				console.log("setting record #", tid, trans);
+			});
+	}
+	(function sendIt() {
+		Promise.resolve(translated).then(trans => res.send(trans));
+	})();
 });
 
 // Fallback 404:
@@ -377,7 +402,7 @@ io.on('connection', function(socket) {
 });
 
 
-// Serve:
+// SERVE:
 var port = process.env.PORT || 3000;
 server.listen(port, function() {
 	console.log('Magic happens on port ' + port);
