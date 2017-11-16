@@ -158,6 +158,11 @@ $(document).ready(function() {
 		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
 	});
 
+	// Receive a CEFR level from Node:
+	socket.on('cefr', function(resp) {
+		console.log(resp);
+	});
+
 	// Load external pages:
 	//$("#wr_frame").attr("src", "http://www.wordreference.com");
 	//$("#leo_frame").attr("src", "http://dict.leo.org");

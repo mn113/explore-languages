@@ -30,6 +30,43 @@ app.use(bodyParser.json()); 	// for parsing application/json
 //app.use(cors());				// might need configuring, specific domains etc.
 
 
+// REDIS:
+var redis = require('redis');
+var redisClient = redis.createClient({host : 'localhost', port : 6379});
+
+redisClient.on('ready',function() {
+	console.log("Redis is ready");
+});
+
+redisClient.on('error',function() {
+	console.log("Error in Redis");
+});
+
+// Short & sweet hash maker:
+String.prototype.hashCode = function() {
+	var hash = 0;
+	if (this.length === 0) return hash;
+	for (var i = 0; i < this.length; i++) {
+		var char = this.charCodeAt(i);
+		hash = ((hash<<5)-hash)+char;
+		hash = hash & hash; // Convert to 32bit integer
+	}
+	return hash;
+};
+
+// Create Redis Record:
+function storeText(text) {
+	var textId = text.hashCode();
+	redisClient.hmset(textId, 'lang', 'en', 'text', text, 'created', new Date());
+	console.log(textId, 'stored');
+}
+storeText("The Quick Brown Fox Jumps Over A Lazy Dog");
+
+// Strip HTML tags and cruft to leave plain text:
+function cleanText() {
+
+}
+
 // SERVICES:
 // Local franc module will detect any text's language:
 function detectLang(text) {
@@ -187,28 +224,17 @@ function cefr_level(text, freqDict) {
 	// Average sentence length:
 	var rawSentences = text.split(/[\?\.\!][\s\n]/);
 	var words = text.split(/\W/);
-	//console.log('rS', rawSentences);
-	//var	splitSentences = rawSentences.map(sent => sent.split(/\w/));
-	//console.log('sS', splitSentences);
-	//var sentLengths = splitSentences.map(sent => sent.length);
-	//console.log('sL', sentLengths);
-	//var avgSentLen = Math.ceil(sentLengths.reduce((a,b) => a+b) / sentLengths.length);
 	var avgSentLen = words.length / rawSentences.length;
 
 	// Average word length:
-	//var words = text.split(/\W/);
 	var wordLengths = words.map(w => w.length);
 	var avgWordLen = Math.ceil(wordLengths.reduce((a,b) => a+b) / wordLengths.length);
 
 	// Average freq of words (TODO:nouns?):
 	var freqs = Object.values(freqDict);
-	console.log('freqs', freqs.length, freqs);
 	freqs = freqs.map(n => parseInt(n));
-	console.log('freqs', freqs.length, freqs);
 	freqs = freqs.filter(n => typeof n === 'number' && !Number.isNaN(n));
-	console.log('freqs', freqs.length, freqs);
 	freqs = freqs.filter(n => n >= 150 && n < 15000);
-	console.log('freqs', freqs.length, freqs);
 	var avgFreq = Math.ceil(freqs.reduce((a,b) => a+b) / freqs.length);
 
 	// Percent hard words:
@@ -244,7 +270,10 @@ function cefr_level(text, freqDict) {
 	}
 	return {
 		flesch: FleschDifficulty,
-		level: cefr_thresholds[i]
+		level: cefr_thresholds[i],
+		avgWordLen: avgWordLen,
+		avgSentLen: avgSentLen,
+		avgFreq: avgFreq
 	};
 }
 
@@ -272,7 +301,8 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 				.then(content => content.substring(0,300))
 				.then(text => {
 					console.log(text);
-					io.emit('wiki', {'lang': lang, 'text': text});
+					var cefr =
+					io.emit('wiki', {lang: lang, text: text, level: cefr});
 				});
 		})
 		.catch(err => console.log(200, err));
