@@ -14,7 +14,7 @@ def freq(word, lang):
 
 def main(argv):
 	lang = argv[-1]
-	words = argv[:-1]
+	words = list(set(argv[:-1]))
 	top5k = wf.top_n_list(lang, 5000)
 	for word in words:
 		#print(word, freq(word, lang))

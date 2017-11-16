@@ -82,6 +82,7 @@ var lookups = {
 $(document).ready(function() {
 
 	var $tagged = $("#tagged");
+	var $output = $("#output");
 
 	// Do it!-button behaviour:
 	$("#goBtn").on('click', function(e) {
@@ -188,7 +189,13 @@ $(document).ready(function() {
 	socket.on('lang', function(lang) {
 		console.log(lang);
 		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
-		$("#output").data("lang", lang.isoCode).addClass(lang.isoCode);
+		$output.data("lang", lang.isoCode).addClass(lang.isoCode);
+		if (['de','ru','gr','pl'].includes(lang.isoCode)) {
+			$output.addClass('cases_on');
+		}
+		else {
+			$output.removeClass('cases_on');
+		}
 	});
 
 	// Receive word frequencies from Node:

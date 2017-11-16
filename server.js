@@ -63,57 +63,6 @@ String.prototype.hashCode = function() {
 	return hash;
 };
 
-// Generate HTML to send back to page:
-function renderHTML(conlluObj, lang) {
-	var html = "";
-	for (var i = 0; i < conlluObj.sentences.length; i++) {
-		var s = conlluObj.sentences[i];
-		if (s.tokens.length < 1) break;	// fix for empty trailing sentence
-
-		for (var j = 0; j < s.tokens.length; j++) {
-			var token = s.tokens[j];
-			//console.log(token);
-			// BUG: GT does not work on these words...
-			token.en = Promise.resolve(translateByGoogle(token.form));
-			// Build the token's HTML tag:
-			if (['PUNCT', 'NUM'].includes(token.upostag)) {
-				html += token.form;
-			}
-			else {
-				var classes = [token.upostag, token.xpostag];
-				if (token.feats) {
-					if (token.feats.includes("Gender=Fem")) classes.push("fem");
-					else if (token.feats.includes("Gender=Masc")) classes.push("masc");
-					else if (token.feats.includes("Gender=Neut")) classes.push("neuter");
-					else if (token.feats.includes("Gender=Com")) classes.push("common");
-					if (token.feats.includes("Case=Nom")) classes.push("nominative");
-					else if (token.feats.includes("Case=Acc")) classes.push("accusative");
-					else if (token.feats.includes("Case=Gen")) classes.push("genitive");
-					else if (token.feats.includes("Case=Dat")) classes.push("dative");
-					else if (token.feats.includes("Case=Instr")) classes.push("instrumental");
-					else if (token.feats.includes("Case=Prep")) classes.push("prepositional");
-				}
-				html += `<ruby class="${classes.join(" ")}" id="${lang.isoCode}_${token.form}">
-							<rb title="${tokenTooltip(token)}" data-lemma="${token.lemma}">${token.form}</rb>
-							<rt>${token.en}</rt>
-							<rt></rt>
-						</ruby>`;
-			}
-			// Space after by default:
-			if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";
-		}
-		// When should newline be applied?
-		//html += "<br>";
-	}
-	return html;
-}
-
-// Generate token's tooltip content:
-function tokenTooltip(token) {
-	token.en = '?';//Promise.resolve(translateByGoogle(token.form));
-	return `${token.en} <br> ${token.lemma} | ${token.upostag} <br> ${token.feats}`;
-}
-
 class Text {
 	constructor(text) {
 		this.text = text;
@@ -199,39 +148,99 @@ class Text {
 			}
 			console.dir(this.wordFreqs);
 			io.emit('freqs', this.wordFreqs);
+			this.cefrLevel();
 		}.bind(this));
 	}
 
 	// Make a request to the UDPipe API to tokenise, lemmatise and tag our string:
-	udpipe(input, langModelName) {
+	udpipe() {
 		const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api";
 		var opts = {
-			data: input,
-			model: langModelName,
+			data: this.text,
+			model: this.lang.modelName,
 			tokenizer: '',
 			tagger: '',
 			parser: ''
 		};
 
 		var url = baseUrl + '/process?' + querystring.stringify(opts);
-		console.log(url);
-		var fetched = fetch(url);
-		return fetched;
+		// Query the UDPipe server:
+		// Now process the ConLLU response:
+		fetch(url)
+			.then(udResponse => udResponse.json())
+			.then(json => {
+				// We have the tagged sentence(s) but in a nasty format
+				// Instantiate a ConLLU interpreter:
+				var conObj = new conllu.Conllu();
+				conObj.serial = json.result;
+				this.tagged = conObj;
+				this.renderHTML();
+			})
+			.catch(err => console.log(err));
+	}
+
+	// Generate HTML to send back to page:
+	renderHTML() {
+		var html = "";
+		for (var i = 0; i < this.tagged.sentences.length; i++) {
+			var s = this.tagged.sentences[i];
+			if (s.tokens.length < 1) break;	// fix for empty trailing sentence
+
+			for (var j = 0; j < s.tokens.length; j++) {
+				var token = s.tokens[j];
+				// Build the token's HTML tag:
+				if (['PUNCT', 'NUM'].includes(token.upostag)) {
+					html += token.form;
+				}
+				else {
+					var classes = [token.upostag, token.xpostag];
+					if (token.feats) {
+						if (token.feats.includes("Gender=Fem")) classes.push("fem");
+						else if (token.feats.includes("Gender=Masc")) classes.push("masc");
+						else if (token.feats.includes("Gender=Neut")) classes.push("neuter");
+						else if (token.feats.includes("Gender=Com")) classes.push("common");
+						if (token.feats.includes("Case=Nom")) classes.push("nominative");
+						else if (token.feats.includes("Case=Acc")) classes.push("accusative");
+						else if (token.feats.includes("Case=Gen")) classes.push("genitive");
+						else if (token.feats.includes("Case=Dat")) classes.push("dative");
+						else if (token.feats.includes("Case=Instr")) classes.push("instrumental");
+						else if (token.feats.includes("Case=Prep")) classes.push("prepositional");
+					}
+					html += `<ruby class="${classes.join(" ")}"
+								id="${this.lang.isoCode}_${token.form}">
+								<rb title="${tokenTooltip(token)}"
+									 data-lemma="${token.lemma}">${token.form}</rb>
+								<rt class="translation"></rt>
+								<rt class="secondary"></rt>
+							</ruby>`;
+				}
+				// Space after by default:
+				if (!token.misc || token.misc !== 'SpaceAfter=No') html += " ";
+			}
+			// When should newline be applied?
+			//html += "<br>";
+		}
+		// Generate token's tooltip content:
+		function tokenTooltip(token) {
+			token.en = '?';//Promise.resolve(translateByGoogle(token.form));
+			return `${token.en} <br> ${token.lemma} | ${token.upostag} <br> ${token.feats}`;
+		}
+		// Send HTML to page:
+		io.emit('tagged', html);
 	}
 
 	// Assess CEFR level of a text:
-	cefr_level(text, freqDict) {
+	cefrLevel() {
 		// Average sentence length:
-		var rawSentences = text.split(/[\?\.\!][\s\n]/);
-		var words = text.split(/\W/);
-		var avgSentLen = words.length / rawSentences.length;
+		var rawSentences = this.text.split(/[\?\.\!][\s\n]/);
+		var avgSentLen = this.words.length / rawSentences.length;
 
 		// Average word length:
-		var wordLengths = words.map(w => w.length);
+		var wordLengths = this.words.map(w => w.length);
 		var avgWordLen = Math.ceil(wordLengths.reduce((a,b) => a+b) / wordLengths.length);
 
 		// Average freq of words (TODO:nouns?):
-		var freqs = Object.values(freqDict);
+		var freqs = Object.values(this.wordFreqs);
 		freqs = freqs.map(n => parseInt(n));
 		freqs = freqs.filter(n => typeof n === 'number' && !Number.isNaN(n));
 		freqs = freqs.filter(n => n >= 150 && n < 15000);
@@ -244,7 +253,7 @@ class Text {
 		// TODO
 
 		// Repetitiveness:
-		// TODO
+		// TODO using wordCounts
 
 		console.log('avgSentLen', avgSentLen);		// suppose 10 - 30
 		console.log('avgWordLen', avgWordLen);		// suppose 2 - 9
@@ -255,7 +264,7 @@ class Text {
 		console.log('Fdiff', FleschDifficulty);
 
 		// Connect:
-		const cefr_thresholds = [
+		const cefrThresholds = [
 			{name: 'C2', minpoints: 0},
 			{name: 'C1', minpoints: 25},
 			{name: 'B2', minpoints: 45},
@@ -266,15 +275,17 @@ class Text {
 
 		var i = 0;
 		while (i < 5) {
-			if (FleschDifficulty > cefr_thresholds[i].minpoints) i++;
+			if (FleschDifficulty > cefrThresholds[i].minpoints) i++;
 		}
-		return {
+		var level = {
 			flesch: FleschDifficulty,
-			level: cefr_thresholds[i].name,
+			level: cefrThresholds[i].name,
 			avgWordLen: avgWordLen,
 			avgSentLen: avgSentLen,
 			avgFreq: avgFreq
 		};
+		this.level = level;
+		io.emit('cefr', level);
 	}
 
 }
@@ -310,50 +321,6 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 		.catch(err => console.error(200, err));
 		num--;
 	}
-});
-
-// Language detection:
-app.post('/detect', function(req, res) {
-	console.log('Got a POST request at /detect');
-	var lang = detectLang(req.body.data);
-	//res.send(lang.modelName);
-	io.emit('lang', lang);
-});
-
-// Frequency getter:
-app.post('/frequencies', function(req, res) {
-	console.log('Got a POST request at /frequencies');
-	var lang = detectLang(req.body.data);
-
-	// Perform frequencies lookup:
-	var wordlist = req.body.data.split(/\W/);
-		//.reduce(t => t.length > 2);	//FIXME: problem ignoring low lengths
-	//console.log(220, wordlist);
-	getWordFreqs(req.body.data, wordlist, lang.isoCode);
-});
-
-// Process source text:
-app.post('/process', function(req, res) {
-	console.log('Got a POST request at /process:', req.body);
-	// Detect lang alwaus:
-	var lang = detectLang(req.body.data);
-	// Send request to UDPipe API:
-	var udPromise = udpipe(req.body.data, lang.modelName);
-	// Handle API response:
-	udPromise
-		.then(udResponse => udResponse.json())
-		.then(json => {
-			// We have the tagged sentence(s) but in a nasty format
-			var udResult = json.result;
-			//console.log(udResult);
-			// Instantiate a ConLLU interpreter:
-			var conObj = new conllu.Conllu();
-			conObj.serial = udResult;	// HOW TO USE CONLLU MODULE WITH RESPONSE??
-			//console.log(c);
-			var html = renderHTML(conObj, lang);
-			res.send(html);
-		})
-		.catch(err => res.end(err));
 });
 
 // Translate source text:
@@ -400,8 +367,9 @@ io.on('connection', function(socket) {
 		// Split is performed in constructor
 		console.log('Words', t.words);
 
-		t.translateByGoogle();
-		t.getWordFreqs();
+		t.translateByGoogle();	// emits text
+		t.getWordFreqs();	// emits Obj
+		t.udpipe();		// emits HTML	// emits cefr Obj
 	});
 });
 
