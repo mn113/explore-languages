@@ -63,62 +63,6 @@ String.prototype.hashCode = function() {
 	return hash;
 };
 
-// Create Redis Record:
-function storeText(text) {
-	var textId = text.hashCode();
-	redisClient.hmset(textId, 'lang', 'en', 'text', text, 'created', new Date());
-	console.log(textId, 'stored');
-}
-storeText("The Quick Brown Fox Jumps Over A Lazy Dog");
-
-
-// SERVICES:
-// Local franc module will detect any text's language:
-function detectLang(text) {
-	var topMatch = franc(text);
-
-	// Conversion from franc's code to UDPipe model name & iso code:
-	var languageCodes = {
-		'eng': ['english','en'],
-		'spa': ['spanish','es'],
-		'fra': ['french','fr'],
-		'por': ['portuguese','pt'],
-		'ita': ['italian','it'],
-		'rus': ['russian','ru'],
-		'deu': ['german','de'],
-		'nob': ['norwegian','nb'],
-		'swe': ['swedish','sv'],
-		'nld': ['dutch','nl'],
-		'dan': ['danish','da'],
-		'ell': ['greek','el'],
-		'cat': ['catalan','ca'],
-		'ron': ['romanian','ro'],
-		'unk': ['unknown', 'en']
-	};
-	console.info(languageCodes[topMatch][0], 'detected');
-	return {
-		modelName: languageCodes[topMatch][0],
-		isoCode: languageCodes[topMatch][1]
-	};
-}
-
-// Make a request to the UDPipe API to tokenise, lemmatise and tag our string:
-function udpipe(input, langModelName) {
-	const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api";
-	var opts = {
-		data: input,
-		model: langModelName,
-		tokenizer: '',
-		tagger: '',
-		parser: ''
-	};
-
-	var url = baseUrl + '/process?' + querystring.stringify(opts);
-	console.log(url);
-	var fetched = fetch(url);
-	return fetched;
-}
-
 // Generate HTML to send back to page:
 function renderHTML(conlluObj, lang) {
 	var html = "";
@@ -170,118 +114,170 @@ function tokenTooltip(token) {
 	return `${token.en} <br> ${token.lemma} | ${token.upostag} <br> ${token.feats}`;
 }
 
-// GTranslate a string:
-function translateByGoogle(input, toLang) {
-	return gtr(input, {to: 'en'}).then(res => {
-		return res.text;
-	}).catch(err => {
-		console.error(err);
-	});
-}
+class Text {
+	constructor(text) {
+		this.text = text;
+		this.lang = this.detectLang();
+		io.emit('lang', this.lang);
+		this.words = this.text.split(/\W+/);	// ok
+		this.wordCounts = this.countWords();
+		this.wordFreqs = null;
+		this.translated = null;
+		this.tagged = null;
+		this.level = null;
+	}
 
-// Fetch a verb conjugation: // FRONTEND ONLY
-function fetchVerbConj(verb, lang) {
-	return verb;
-}
+	// Local franc module will detect any text's language:
+	detectLang() {
+		var topMatch = franc(this.text);
+		// Conversion from franc's code to UDPipe model name & iso code:
+		var languageCodes = {
+			'eng': ['english','en'],
+			'spa': ['spanish','es'],
+			'fra': ['french','fr'],
+			'por': ['portuguese','pt'],
+			'ita': ['italian','it'],
+			'rus': ['russian','ru'],
+			'deu': ['german','de'],
+			'nob': ['norwegian','nb'],
+			'swe': ['swedish','sv'],
+			'nld': ['dutch','nl'],
+			'dan': ['danish','da'],
+			'ell': ['greek','el'],
+			'cat': ['catalan','ca'],
+			'ron': ['romanian','ro'],
+			'unk': ['unknown', 'en']
+		};
+		console.info(languageCodes[topMatch][0], 'detected');
+		return {
+			modelName: languageCodes[topMatch][0],
+			isoCode: languageCodes[topMatch][1]
+		};
+	}
 
-// Wrapper for Python wordfreqs script:
-function getWordFreqs(text, words, lang) {
-	var options = {
-		mode: 'text',
-		pythonPath: 'python',
-		pythonOptions: ['-u'],
-		scriptPath: '',
-		args: words.concat(lang)
-	};
-
-	PythonShell.run('wordfreqs.py', options, function(err, results) {
-		if (err) throw err;
-		// results is an array consisting of messages collected during execution
-		console.log('wordfreqs.py results: %j', results);
-
-		var freqDict = {};
-		for (var pair of results) {
-			var [word, score] = pair.split(" ");
-			freqDict[word] = score;
+	// Count occurrences of each word:
+	countWords() {
+		var counts = {};
+		for (var i = 0; i < this.words.length; i++) {
+			var word = this.words[i];
+			if (Object.keys(counts).includes(word)) counts[word] += 1;
+			else counts[word] = 1;
 		}
-		console.dir(freqDict);
-
-		console.dir(cefr_level(text, freqDict));
-
-		io.emit('freqs', freqDict);
-	});
-}
-//getWordFreqs(['big','red','helicopter'], 'en');
-
-// Count occurrences of each word:
-function countWords(words) {
-	var counts = {};
-	for (var i = 0; i < words.length; i++) {
-		var word = words[i];
-		if (Object.keys(counts).includes(word)) counts[word] += 1;
-		else counts[word] = 1;
+		return counts;
 	}
-	return counts;
-}
 
-// Assess CEFR level of a text:
-function cefr_level(text, freqDict) {
-	// Average sentence length:
-	var rawSentences = text.split(/[\?\.\!][\s\n]/);
-	var words = text.split(/\W/);
-	var avgSentLen = words.length / rawSentences.length;
-
-	// Average word length:
-	var wordLengths = words.map(w => w.length);
-	var avgWordLen = Math.ceil(wordLengths.reduce((a,b) => a+b) / wordLengths.length);
-
-	// Average freq of words (TODO:nouns?):
-	var freqs = Object.values(freqDict);
-	freqs = freqs.map(n => parseInt(n));
-	freqs = freqs.filter(n => typeof n === 'number' && !Number.isNaN(n));
-	freqs = freqs.filter(n => n >= 150 && n < 15000);
-	var avgFreq = Math.ceil(freqs.reduce((a,b) => a+b) / freqs.length);
-
-	// Percent hard words:
-	// TODO
-
-	// Tenses used:
-	// TODO
-
-	// Repetitiveness:
-	// TODO
-
-	console.log('avgSentLen', avgSentLen);		// suppose 10 - 30
-	console.log('avgWordLen', avgWordLen);		// suppose 2 - 9
-	console.log('avgFreq', avgFreq);	// suppose 500 - 2000
-
-	// Compute:
-	var FleschDifficulty = 207 - avgSentLen - (avgFreq / 13);
-	console.log('Fdiff', FleschDifficulty);
-
-	// Connect:
-	const cefr_thresholds = [
-		{name: 'C2', minpoints: 0},
-		{name: 'C1', minpoints: 25},
-		{name: 'B2', minpoints: 45},
-		{name: 'B1', minpoints: 60},
-		{name: 'A2', minpoints: 75},
-		{name: 'A1', minpoints: 90},
-	];
-
-	var i = 0;
-	while (i < 5) {
-		if (FleschDifficulty > cefr_thresholds[i].minpoints) i++;
+	// GTranslate a string:
+	translateByGoogle(toLang = 'en') {
+		gtr(this.text, {to: toLang}).then(res => {
+			this.translated = res.text;
+			io.emit('translated', this.translated);
+		}).catch(err => {
+			console.error(err);
+		});
 	}
-	return {
-		flesch: FleschDifficulty,
-		level: cefr_thresholds[i].name,
-		avgWordLen: avgWordLen,
-		avgSentLen: avgSentLen,
-		avgFreq: avgFreq
-	};
-}
 
+	// Wrapper for Python wordfreqs script:
+	getWordFreqs() {
+		var goodWords = this.words.filter(w => w.length > 2 && !w.match(/\d/));
+		var options = {
+			mode: 'text',
+			pythonPath: 'python',
+			pythonOptions: ['-u'],
+			scriptPath: '',
+			args: goodWords.concat(this.lang.isoCode)
+		};
+
+		PythonShell.run('wordfreqs.py', options, function(err, results) {
+			if (err) throw err;
+			// results is an array consisting of messages collected during execution
+			console.log('wordfreqs.py results: %j', results);
+
+			this.wordFreqs = {};
+			for (var pair of results) {
+				var [word, score] = pair.split(" ");
+				this.wordFreqs[word] = score;
+			}
+			console.dir(this.wordFreqs);
+			io.emit('freqs', this.wordFreqs);
+		}.bind(this));
+	}
+
+	// Make a request to the UDPipe API to tokenise, lemmatise and tag our string:
+	udpipe(input, langModelName) {
+		const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api";
+		var opts = {
+			data: input,
+			model: langModelName,
+			tokenizer: '',
+			tagger: '',
+			parser: ''
+		};
+
+		var url = baseUrl + '/process?' + querystring.stringify(opts);
+		console.log(url);
+		var fetched = fetch(url);
+		return fetched;
+	}
+
+	// Assess CEFR level of a text:
+	cefr_level(text, freqDict) {
+		// Average sentence length:
+		var rawSentences = text.split(/[\?\.\!][\s\n]/);
+		var words = text.split(/\W/);
+		var avgSentLen = words.length / rawSentences.length;
+
+		// Average word length:
+		var wordLengths = words.map(w => w.length);
+		var avgWordLen = Math.ceil(wordLengths.reduce((a,b) => a+b) / wordLengths.length);
+
+		// Average freq of words (TODO:nouns?):
+		var freqs = Object.values(freqDict);
+		freqs = freqs.map(n => parseInt(n));
+		freqs = freqs.filter(n => typeof n === 'number' && !Number.isNaN(n));
+		freqs = freqs.filter(n => n >= 150 && n < 15000);
+		var avgFreq = Math.ceil(freqs.reduce((a,b) => a+b) / freqs.length);
+
+		// Percent hard words:
+		// TODO
+
+		// Tenses used:
+		// TODO
+
+		// Repetitiveness:
+		// TODO
+
+		console.log('avgSentLen', avgSentLen);		// suppose 10 - 30
+		console.log('avgWordLen', avgWordLen);		// suppose 2 - 9
+		console.log('avgFreq', avgFreq);	// suppose 500 - 2000
+
+		// Compute:
+		var FleschDifficulty = 207 - avgSentLen - (avgFreq / 13);
+		console.log('Fdiff', FleschDifficulty);
+
+		// Connect:
+		const cefr_thresholds = [
+			{name: 'C2', minpoints: 0},
+			{name: 'C1', minpoints: 25},
+			{name: 'B2', minpoints: 45},
+			{name: 'B1', minpoints: 60},
+			{name: 'A2', minpoints: 75},
+			{name: 'A1', minpoints: 90},
+		];
+
+		var i = 0;
+		while (i < 5) {
+			if (FleschDifficulty > cefr_thresholds[i].minpoints) i++;
+		}
+		return {
+			flesch: FleschDifficulty,
+			level: cefr_thresholds[i].name,
+			avgWordLen: avgWordLen,
+			avgSentLen: avgSentLen,
+			avgFreq: avgFreq
+		};
+	}
+
+}
 
 // ROUTES:
 // Serve index.html & accoutrements:
@@ -396,6 +392,16 @@ io.on('connection', function(socket) {
 	console.log('a user connected');
 	socket.on('disconnect', function() {
 		console.log('user disconnected');
+	});
+
+	socket.on('text', function(data) {
+		console.log("Received socket text:", data.substring(0,50));
+		var t = new Text(data);
+		// Split is performed in constructor
+		console.log('Words', t.words);
+
+		t.translateByGoogle();
+		t.getWordFreqs();
 	});
 });
 

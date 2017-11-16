@@ -39,152 +39,6 @@ var resources = {
 	}
 };
 
-
-// jQuery has loaded, document too:
-$(document).ready(function() {
-
-	var $tagged = $("#tagged");
-
-	// Do it!-button behaviour:
-	$("#goBtn").on('click', function(e) {
-		e.preventDefault();
-
-		var text = $("#source").html();
-
-		$.post('/detect', {data: text}, function(resp) {
-			console.log("Server response", resp);
-			lang = resp.isoCode;
-			$("h2:first-of-type span").html("["+lang+" detected]");
-			$("#output").data("lang", lang);
-		});
-
-		$.post('/translate', {data: text}, function(resp) {
-			console.log("Server response", resp);
-			$("#translated").html(resp);
-		});
-
-		// FIXME: unnecessary request?
-		$.post('/frequencies', {data: text}, function(resp) {
-			console.log("Server response", resp);
-			// Response handled by socket.on
-		});
-
-		$.post('/process', {data: text}, function(resp) {
-			$tagged.html(resp);
-			// Generate token tooltips:
-			tippy("rb");
-		});
-	});
-
-	// Grammar display toggles:
-	$("input").on('change', function() {
-		switch ($(this).attr("name")) {
-			case "showperword":
-				if (this.checked) $tagged.find("ruby rt:first-of-type").show();
-				else $tagged.find("ruby rt:first-of-type").hide();
-				break;
-
-			case "showranks":
-				if (this.checked) $tagged.find("ruby rt:last-of-type").show();
-				else $tagged.find("ruby rt:last-of-type").hide();
-				break;
-
-			case "showgenders":
-				if (this.checked) $tagged.addClass("genders_on");
-				else $tagged.removeClass("genders_on");
-				break;
-
-			case "showcases":
-				if (this.checked) $tagged.addClass("cases_on");
-				else $tagged.removeClass("cases_on");
-				break;
-
-			default:
-				console.log(this);
-				break;
-		}
-	});
-
-
-	// Panel behaviours:
-	$("#panelToggle").on('click', function() {
-		$("#panel, #panelToggle").toggleClass("open");
-	});
-	$("#panel li").on('click', function() {
-		// Show and hide tab sections based on list id:
-		var target = $(this).attr("id");
-		var num = Array.prototype.indexOf.call($("#panel li"), this) + 1;
-		console.log(num);
-		$("#panel section").hide();
-		$("#panel #"+target).show();
-	});
-
-
-	// Load example articles when dropdown changes:
-	// TODO: save these for some time
-	// TODO: delete and remember bad ones
-	$("header select").on('change', function() {
-		console.log(this.value);
-		lang = this.value;
-		$.get('/wikipedia/'+lang+'/3', resp => console.log(resp));
-	});
-
-	// Examples loader:
-	$("#examples").on('click', 'li', function(e) {
-		$("#source").html(e.target.innerHTML).addClass($(this).data("lang"));
-	});
-
-
-	// Receive franc-detected language from Node:
-	socket.on('lang', function(lang) {
-		console.log(lang);
-		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
-		$("#output").data("lang", lang.isoCode).addClass(lang.isoCode);
-	});
-
-	// Receive word frequencies from Node:
-	socket.on('freqs', function(freqs) {
-		console.log(freqs);
-		var lang = $("#output").data("lang") || '';
-		// Append the frequencies to the output text tooltips:
-		for (var word of Object.keys(freqs)) {
-			$("#tagged").find("#"+lang+"_"+word).find("rt:nth-of-type(2)").html(freqs[word]);
-		}
-	});
-
-	// Receive a new wiki article from Node:
-	socket.on('wiki', function(resp) {
-		console.log(resp);
-		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
-	});
-
-	// Receive a CEFR level from Node:
-	socket.on('cefr', function(resp) {
-		console.log(resp);
-	});
-
-	// Load external pages:
-	//$("#wr_frame").attr("src", "http://www.wordreference.com");
-	//$("#leo_frame").attr("src", "http://dict.leo.org");
-	//$("#verbix_frame").attr("src", "http://www.verbix.com");
-
-
-	// Make words clickable:
-	$("#tagged").on('click', 'rb', function() {
-		// Should lookup be done by simple click, by contextual menu or by tool?
-		lookups.glosbe(this.innerHTML);
-		lookups.verbix($(this).data("lemma"));
-	});
-
-});
-
-function focusTab(tab) {
-	$("#panel, #panelToggle").addClass("open");
-	$("#panel section").hide();
-	$("#panel").find("#"+tab+"_tab").show();
-
-}
-
 var lookups = {
 	wr: function(word) {
 		// Load WR lookup in an iframe:
@@ -222,3 +76,152 @@ var lookups = {
 		});
 	}
 };
+
+
+// jQuery has loaded, document too:
+$(document).ready(function() {
+
+	var $tagged = $("#tagged");
+
+	// Do it!-button behaviour:
+	$("#goBtn").on('click', function(e) {
+		e.preventDefault();
+
+		var text = $("#source").html();
+		// Send text to backend via socket:
+		socket.emit('text', text);
+
+		/*
+		// FIXME: unnecessary requests?
+		$.post('/detect', {data: text}, function(resp) {
+			console.log("Server response", resp);
+			lang = resp.isoCode;
+			$("h2:first-of-type span").html("["+lang+" detected]");
+			$("#output").data("lang", lang);
+		});
+
+		$.post('/translate', {data: text}, function(resp) {
+			console.log("Server response", resp);
+			$("#translated").html(resp);
+		});
+
+		$.post('/frequencies', {data: text}, function(resp) {
+			console.log("Server response", resp);
+			// Response handled by socket.on
+		});
+
+		$.post('/process', {data: text}, function(resp) {
+			$tagged.html(resp);
+			// Generate token tooltips:
+			tippy("rb");
+		});
+		*/
+	});
+
+	// Grammar display toggles:
+	$("input").on('change', function() {
+		switch ($(this).attr("name")) {
+			case "showperword":
+				if (this.checked) $tagged.find("ruby rt:first-of-type").show();
+				else $tagged.find("ruby rt:first-of-type").hide();
+				break;
+
+			case "showranks":
+				if (this.checked) $tagged.find("ruby rt:last-of-type").show();
+				else $tagged.find("ruby rt:last-of-type").hide();
+				break;
+
+			case "showgenders":
+				if (this.checked) $tagged.addClass("genders_on");
+				else $tagged.removeClass("genders_on");
+				break;
+
+			case "showcases":
+				if (this.checked) $tagged.addClass("cases_on");
+				else $tagged.removeClass("cases_on");
+				break;
+
+			default:
+				console.log(this);
+				break;
+		}
+	});
+
+	// Make words clickable:
+	$("#tagged").on('click', 'rb', function() {
+		// Should lookup be done by simple click, by contextual menu or by tool?
+		lookups.glosbe(this.innerHTML);
+		lookups.verbix($(this).data("lemma"));
+	});
+
+
+	// Panel behaviours:
+	$("#panelToggle").on('click', function() {
+		$("#panel, #panelToggle").toggleClass("open");
+	});
+	$("#panel li").on('click', function() {
+		// Show and hide tab sections based on list id:
+		var target = $(this).attr("id");
+		var num = Array.prototype.indexOf.call($("#panel li"), this) + 1;
+		console.log(num);
+		$("#panel section").hide();
+		$("#panel #"+target).show();
+	});
+
+
+	// Load example articles when dropdown changes:
+	// TODO: save these for some time
+	// TODO: delete and remember bad ones
+	$("header select").on('change', function() {
+		console.log(this.value, 'selected');
+		lang = this.value;
+		$.get('/wikipedia/'+lang+'/3', resp => console.log(resp));
+	});
+
+	// Example card -> source loader:
+	$("#examples").on('click', 'li', function(e) {
+		$("#source").html(e.target.innerHTML).addClass($(this).data("lang"));
+	});
+
+
+	// Receive franc-detected language from Node:
+	socket.on('lang', function(lang) {
+		console.log(lang);
+		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
+		$("#output").data("lang", lang.isoCode).addClass(lang.isoCode);
+	});
+
+	// Receive word frequencies from Node:
+	socket.on('freqs', function(freqs) {
+		console.log('freqs', freqs);
+		var lang = $("#output").data("lang") || '';
+		// Append the frequencies to the output text tooltips:
+		for (var word of Object.keys(freqs)) {
+			$("#tagged").find("#"+lang+"_"+word).find("rt:nth-of-type(2)").html(freqs[word]);
+		}
+	});
+
+	// Receive a new wiki article from Node:
+	socket.on('wiki', function(resp) {
+		console.log(resp);
+		$("#examples").append($("<li>").addClass(resp.lang).html(resp.text));
+	});
+
+	// Receive a CEFR level from Node:
+	socket.on('cefr', function(resp) {
+		console.log(resp);
+	});
+
+	// Load external pages:
+	//$("#wr_frame").attr("src", "http://www.wordreference.com");
+	//$("#leo_frame").attr("src", "http://dict.leo.org");
+	//$("#verbix_frame").attr("src", "http://www.verbix.com");
+
+});
+
+function focusTab(tab) {
+	$("#panel, #panelToggle").addClass("open");
+	$("#panel section").hide();
+	$("#panel").find("#"+tab+"_tab").show();
+
+}
