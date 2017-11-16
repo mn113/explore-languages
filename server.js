@@ -35,7 +35,12 @@ app.use(bodyParser.json()); 	// for parsing application/json
 // REDIS:
 var redis = require('redis');
 var redisClient = redis.createClient({host: 'localhost', port: 6379});
-
+// Test set/get:
+redisClient.on("connect", function () {
+	redisClient.set("foo_rand000000000000", "set/get works", redis.print);
+	redisClient.get("foo_rand000000000000", redis.print);
+	redisClient.exists("foo_rand000000000000", redis.print);
+});
 redisClient.on('ready', function() {
 	console.info("Redis is ready");
 });
@@ -66,10 +71,6 @@ function storeText(text) {
 }
 storeText("The Quick Brown Fox Jumps Over A Lazy Dog");
 
-// Strip HTML tags and cruft to leave plain text:
-function cleanText() {
-
-}
 
 // SERVICES:
 // Local franc module will detect any text's language:
@@ -274,7 +275,7 @@ function cefr_level(text, freqDict) {
 	}
 	return {
 		flesch: FleschDifficulty,
-		level: cefr_thresholds[i],
+		level: cefr_thresholds[i].name,
 		avgWordLen: avgWordLen,
 		avgSentLen: avgSentLen,
 		avgFreq: avgFreq
@@ -363,27 +364,24 @@ app.post('/process', function(req, res) {
 app.post('/translate', function(req, res) {
 	console.log('Got a POST request at /translate:', req.body);
 	var text = striptags(req.body.data);
-	var translated = '';
 	// Redis:
 	var tid = text.hashCode();
-	console.log('tid', tid);
-	redisClient.hgetall(tid, function(err,obj) {
-		console.dir('hgetall', obj);
-	});
-	if (redisClient.hexists(tid, 'gtranslate')) {	// BUG: FALSE POSITIVE?
-		translated = redisClient.hget(tid, 'gtranslate', redis.print);
-		console.log("retrieving record #", tid, translated);
-	}
-	else {
-		translated = translateByGoogle(text)
-			.then(trans => {
-				redisClient.hset(tid, 'gtranslate', trans, redis.print);
-				console.log("setting record #", tid, trans);
+	redisClient.hexists(tid, 'gtranslate', function(err,res) {	// BUG: FALSE POSITIVE?
+		if (res === 1) {
+			console.log("key", tid, "exists");
+			redisClient.hget(tid, 'gtranslate', sendIt);
+		}
+		else {
+			console.log("key", tid, "doesn't exist");
+			translateByGoogle(text).then(trans => {
+				redisClient.hset(tid, 'gtranslate', trans, sendIt);
 			});
+		}
+	});
+	function sendIt(err,trans) {
+		console.log('T', trans);
+		res.send(trans);
 	}
-	(function sendIt() {
-		Promise.resolve(translated).then(trans => res.send(trans));
-	})();
 });
 
 // Fallback 404:
