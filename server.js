@@ -143,7 +143,7 @@ function fetchVerbConj(verb, lang) {
 }
 
 // Wrapper for Python wordfreqs script:
-function getWordFreqs(words, lang) {
+function getWordFreqs(text, words, lang) {
 	var options = {
 		mode: 'text',
 		pythonPath: 'python',
@@ -164,6 +164,8 @@ function getWordFreqs(words, lang) {
 		}
 		console.log(freqDict);
 
+		console.log(cefr_level(text, freqDict));
+
 		io.emit('freqs', freqDict);
 	});
 }
@@ -180,6 +182,71 @@ function countWords(words) {
 	return counts;
 }
 
+// Assess CEFR level of a text:
+function cefr_level(text, freqDict) {
+	// Average sentence length:
+	var rawSentences = text.split(/[\?\.\!][\s\n]/);
+	var words = text.split(/\W/);
+	//console.log('rS', rawSentences);
+	//var	splitSentences = rawSentences.map(sent => sent.split(/\w/));
+	//console.log('sS', splitSentences);
+	//var sentLengths = splitSentences.map(sent => sent.length);
+	//console.log('sL', sentLengths);
+	//var avgSentLen = Math.ceil(sentLengths.reduce((a,b) => a+b) / sentLengths.length);
+	var avgSentLen = words.length / rawSentences.length;
+
+	// Average word length:
+	//var words = text.split(/\W/);
+	var wordLengths = words.map(w => w.length);
+	var avgWordLen = Math.ceil(wordLengths.reduce((a,b) => a+b) / wordLengths.length);
+
+	// Average freq of words (TODO:nouns?):
+	var freqs = Object.values(freqDict);
+	console.log('freqs', freqs.length, freqs);
+	freqs = freqs.map(n => parseInt(n));
+	console.log('freqs', freqs.length, freqs);
+	freqs = freqs.filter(n => typeof n === 'number' && !Number.isNaN(n));
+	console.log('freqs', freqs.length, freqs);
+	freqs = freqs.filter(n => n >= 150 && n < 15000);
+	console.log('freqs', freqs.length, freqs);
+	var avgFreq = Math.ceil(freqs.reduce((a,b) => a+b) / freqs.length);
+
+	// Percent hard words:
+	// TODO
+
+	// Tenses used:
+	// TODO
+
+	// Repetitiveness:
+	// TODO
+
+	console.log('avgSentLen', avgSentLen);		// suppose 10 - 30
+	console.log('avgWordLen', avgWordLen);		// suppose 2 - 9
+	console.log('avgFreq', avgFreq);	// suppose 500 - 2000
+
+	// Compute:
+	var FleschDifficulty = 207 - avgSentLen - (avgFreq / 13);
+	console.log('Fdiff', FleschDifficulty);
+
+	// Connect:
+	const cefr_thresholds = [
+		{name: 'C2', minpoints: 0},
+		{name: 'C1', minpoints: 25},
+		{name: 'B2', minpoints: 45},
+		{name: 'B1', minpoints: 60},
+		{name: 'A2', minpoints: 75},
+		{name: 'A1', minpoints: 90},
+	];
+
+	var i = 0;
+	while (i < 5) {
+		if (FleschDifficulty > cefr_thresholds[i].minpoints) i++;
+	}
+	return {
+		flesch: FleschDifficulty,
+		level: cefr_thresholds[i]
+	};
+}
 
 // ROUTES:
 // Serve index.html & accoutrements:
@@ -227,10 +294,10 @@ app.post('/frequencies', function(req, res) {
 	var lang = detectLang(req.body.data);
 
 	// Perform frequencies lookup:
-	var wordlist = req.body.data.split(/\W/)
-		//.reduce(t => t.length > 2);
+	var wordlist = req.body.data.split(/\W/);
+		//.reduce(t => t.length > 2);	//FIXME: problem ignoring low lengths
 	console.log(220, wordlist);
-	getWordFreqs(wordlist, lang.isoCode);
+	getWordFreqs(req.body.data, wordlist, lang.isoCode);
 });
 
 // Process source text:
