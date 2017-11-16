@@ -63,9 +63,57 @@ String.prototype.hashCode = function() {
 	return hash;
 };
 
+// Redis wrapper class:
+class Datastore {
+	constructor() {
+
+	}
+
+	storeText(text) {
+		var tid = text.hashCode();
+		redisClient.hset(tid, 'text', text);		// string
+	}
+	storeTranslation(tid, trans) {
+		redisClient.hset(tid, 'translated', trans);	// string
+	}
+	storeFreqs(tid, freqs) {
+		redisClient.hmset(tid+'_freqs', freqs);		// object
+	}
+	storePOS(tid, conlluObj) {
+		redisClient.hmset(tid+'_pos', conlluObj);	// object
+	}
+	storeCounts(tid, counts) {
+		redisClient.hmset(tid+'_counts', counts);	// object
+	}
+	storeLevel(tid, level) {
+		redisClient.hmset(tid+'_level', level);		// object
+	}
+
+	getText(tid) {
+		redisClient.hget(tid, 'text', (err,res) => io.emit('text', res));
+	}
+	getTranslation(tid) {
+		redisClient.hget(tid, 'translated', (err,res) => io.emit('translated', res));
+	}
+	getFreqs(tid) {
+		redisClient.hgetall(tid+'_freqs', (err,res) => io.emit('freqs', res));
+	}
+	getPOS(tid) {
+		redisClient.hgetall(tid+'_pos', (err,res) => io.emit('pos', res));
+	}
+	getCounts(tid) {
+		redisClient.hgetall(tid+'_counts', (err,res) => io.emit('counts', res));
+	}
+	getLevel(tid) {
+		redisClient.hgetall(tid+'_level', (err,res) => io.emit('level', res));
+	}
+}
+var db = new Datastore();
+
 class Text {
 	constructor(text) {
 		this.text = text;
+		this.id = this.text.hashCode();
 		this.lang = this.detectLang();
 		io.emit('lang', this.lang);
 		this.words = this.text.split(/\W+/);	// ok
@@ -117,7 +165,7 @@ class Text {
 
 	// GTranslate a string:
 	translateByGoogle(toLang = 'en') {
-		gtr(this.text, {to: toLang}).then(res => {
+		return gtr(this.text, {to: toLang}).then(res => {
 			this.translated = res.text;
 			io.emit('translated', this.translated);
 		}).catch(err => {
@@ -363,11 +411,24 @@ io.on('connection', function(socket) {
 
 	socket.on('text', function(data) {
 		console.log("Received socket text:", data.substring(0,50));
-		var t = new Text(data);
+		var text = striptags(data);
+		var t = new Text(text);
 		// Split is performed in constructor
 		console.log('Words', t.words);
 
-		t.translateByGoogle();	// emits text
+		redisClient.hexists(t.id, 'translated', function(err,res) {
+			if (res === 1) {
+				db.getTranslation(t.id);	// emits text
+			}
+			else {
+				t.translateByGoogle()	// BUG: not thenable
+				.then(trans => {	// emits text
+					db.storeTranslation(t.id, trans);
+				});
+			}
+		});
+
+		//t.translateByGoogle();	// emits text
 		t.getWordFreqs();	// emits Obj
 		t.udpipe();		// emits HTML	// emits cefr Obj
 	});
