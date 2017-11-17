@@ -87,36 +87,9 @@ $(document).ready(function() {
 	// Do it!-button behaviour:
 	$("#goBtn").on('click', function(e) {
 		e.preventDefault();
-
 		var text = $("#source").html();
 		// Send text to backend via socket:
 		socket.emit('text', text);
-
-		/*
-		// FIXME: unnecessary requests?
-		$.post('/detect', {data: text}, function(resp) {
-			console.log("Server response", resp);
-			lang = resp.isoCode;
-			$("h2:first-of-type span").html("["+lang+" detected]");
-			$("#output").data("lang", lang);
-		});
-
-		$.post('/translate', {data: text}, function(resp) {
-			console.log("Server response", resp);
-			$("#translated").html(resp);
-		});
-
-		$.post('/frequencies', {data: text}, function(resp) {
-			console.log("Server response", resp);
-			// Response handled by socket.on
-		});
-
-		$.post('/process', {data: text}, function(resp) {
-			$tagged.html(resp);
-			// Generate token tooltips:
-			tippy("rb");
-		});
-		*/
 	});
 
 	// Grammar display toggles:
@@ -191,11 +164,18 @@ $(document).ready(function() {
 		$("h2:first-of-type span").html("["+lang.modelName+" detected]");
 		$output.data("lang", lang.isoCode).addClass(lang.isoCode);
 		if (['de','ru','gr','pl'].includes(lang.isoCode)) {
-			$output.addClass('cases_on');
+			$tagged.addClass('cases_on');
 		}
 		else {
-			$output.removeClass('cases_on');
+			$tagged.removeClass('cases_on');
 		}
+	});
+
+	// Receive tagged text as HTML from Node:
+	socket.on('tagged', function(html) {
+		$tagged.html(html);
+		// Generate token tooltips:
+		tippy("rb");
 	});
 
 	// Receive word frequencies from Node:
