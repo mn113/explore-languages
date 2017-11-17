@@ -19,7 +19,11 @@ const gtr = require('google-translate-api');
 const wiki = require('wikijs').default;
 const PythonShell = require('python-shell');
 const striptags = require('striptags');
-var console = require('better-console');
+//var console = require('better-console');
+const console = require('tracer').console({
+	format : "{{timestamp}} <{{title}}> {{message}} (in {{file}}:{{line}})",
+	dateformat : "HH:MM:ss.L"
+});
 
 
 // Static assets to be served:
@@ -194,7 +198,7 @@ class Text {
 				var [word, score] = pair.split(" ");
 				this.wordFreqs[word] = score;
 			}
-			console.dir(this.wordFreqs);
+			console.log(this.wordFreqs);
 			io.emit('freqs', this.wordFreqs);
 			this.cefrLevel();
 		}.bind(this));
