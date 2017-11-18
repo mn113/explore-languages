@@ -36,16 +36,9 @@ app.use(bodyParser.urlencoded({ extended: false }));	// parse application/x-www-
 app.use(bodyParser.json()); 	// for parsing application/json
 //app.use(cors());				// might need configuring, specific domains etc.
 
-
 // REDIS:
 var redis = require('redis');
 var redisClient = redis.createClient({host: 'localhost', port: 6379});
-// Test set/get:
-redisClient.on("connect", function () {
-	redisClient.set("foo_rand000000000000", "set/get works", redis.print);
-	redisClient.get("foo_rand000000000000", redis.print);
-	redisClient.exists("foo_rand000000000000", redis.print);
-});
 redisClient.on('ready', function() {
 	console.info("Redis is ready");
 });
@@ -76,15 +69,17 @@ class Datastore {
 
 	// Pass this setter a Text object:
 	storeText(t) {
-		redisClient.hmset('text:'+t.id, flatten(t), redis.print);
+		redisClient.hmset('text:'+t.id, flatten(t), redis.print);	// ok
 	}
 
 	// Retrieve data using the tid:
 	getText(tid) {
 		// Rebuild Text object
-		return redisClient.hgetall('text:'+tid, function (err,res) {
+		return redisClient.hgetall('text:'+tid, function(err,obj) {
 			redis.print();
-			return unflatten(res);
+			var t = unflatten(obj);
+			console.log("retrieved", t);
+			return t;
 		});
 	}
 }
@@ -397,12 +392,13 @@ io.on('connection', function(socket) {
 		console.log('Words', t.words);
 
 		// Check DB for text:
-		redisClient.exists('text:'+t.id, function(err,res) {
-			if (res === 1) {
-				t = db.getText(t.id);	// emits text
+		redisClient.exists('text:'+t.id, function(err,result) {
+			if (result === 1) {
+				t = db.getText(t.id);
 			}
 			else {
 				db.storeText(t);
+				console.log("stored", t.id);
 			}
 		});
 		// Check what t has:
