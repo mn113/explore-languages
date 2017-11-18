@@ -24,7 +24,8 @@ const console = require('tracer').console({
 	format : "{{timestamp}} <{{title}}> {{message}} (in {{file}}:{{line}})",
 	dateformat : "HH:MM:ss.L"
 });
-
+const flatten = require('flat');
+const unflatten = flatten.unflatten;
 
 // Static assets to be served:
 app.use(express.static(path.join(__dirname,'public')));
@@ -73,54 +74,29 @@ class Datastore {
 
 	}
 
-	storeText(text) {
-		var tid = text.hashCode();
-		redisClient.hset(tid, 'text', text);		// string
-	}
-	storeTranslation(tid, trans) {
-		redisClient.hset(tid, 'translated', trans);	// string
-	}
-	storeFreqs(tid, freqs) {
-		redisClient.hmset(tid+'_freqs', freqs);		// object
-	}
-	storePOS(tid, conlluObj) {
-		redisClient.hmset(tid+'_pos', conlluObj);	// object
-	}
-	storeCounts(tid, counts) {
-		redisClient.hmset(tid+'_counts', counts);	// object
-	}
-	storeLevel(tid, level) {
-		redisClient.hmset(tid+'_level', level);		// object
+	// Pass this setter a Text object:
+	storeText(t) {
+		redisClient.hmset('text:'+t.id, flatten(t), redis.print);
 	}
 
+	// Retrieve data using the tid:
 	getText(tid) {
-		redisClient.hget(tid, 'text', (err,res) => io.emit('text', res));
-	}
-	getTranslation(tid) {
-		redisClient.hget(tid, 'translated', (err,res) => io.emit('translated', res));
-	}
-	getFreqs(tid) {
-		redisClient.hgetall(tid+'_freqs', (err,res) => io.emit('freqs', res));
-	}
-	getPOS(tid) {
-		redisClient.hgetall(tid+'_pos', (err,res) => io.emit('pos', res));
-	}
-	getCounts(tid) {
-		redisClient.hgetall(tid+'_counts', (err,res) => io.emit('counts', res));
-	}
-	getLevel(tid) {
-		redisClient.hgetall(tid+'_level', (err,res) => io.emit('level', res));
+		// Rebuild Text object
+		return redisClient.hgetall('text:'+tid, function (err,res) {
+			redis.print();
+			return unflatten(res);
+		});
 	}
 }
 var db = new Datastore();
 
 class Text {
 	constructor(text) {
-		this.text = text;
-		this.id = this.text.hashCode();
+		this.source = text;
+		this.id = text.hashCode();
 		this.lang = this.detectLang();
 		io.emit('lang', this.lang);
-		this.words = this.text.split(/\W+/);	// ok
+		this.words = text.split(/\W+/);	// ok
 		this.wordCounts = this.countWords();
 		this.wordFreqs = null;
 		this.translated = null;
@@ -130,7 +106,7 @@ class Text {
 
 	// Local franc module will detect any text's language:
 	detectLang() {
-		var topMatch = franc(this.text);
+		var topMatch = franc(this.source);
 		// Conversion from franc's code to UDPipe model name & iso code:
 		var languageCodes = {
 			'eng': ['english','en'],
@@ -169,7 +145,7 @@ class Text {
 
 	// GTranslate a string:
 	translateByGoogle(toLang = 'en') {
-		return gtr(this.text, {to: toLang}).then(res => {
+		return gtr(this.source, {to: toLang}).then(res => {
 			this.translated = res.text;
 			io.emit('translated', this.translated);
 		}).catch(err => {
@@ -208,7 +184,7 @@ class Text {
 	udpipe() {
 		const baseUrl = "http://lindat.mff.cuni.cz/services/udpipe/api";
 		var opts = {
-			data: this.text,
+			data: this.source,
 			model: this.lang.modelName,
 			tokenizer: '',
 			tagger: '',
@@ -284,7 +260,7 @@ class Text {
 	// Assess CEFR level of a text:
 	cefrLevel() {
 		// Average sentence length:
-		var rawSentences = this.text.split(/[\?\.\!][\s\n]/);
+		var rawSentences = this.source.split(/[\?\.\!][\s\n]/);
 		var avgSentLen = this.words.length / rawSentences.length;
 
 		// Average word length:
@@ -376,7 +352,7 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 });
 
 // Translate source text:
-app.post('/translate', function(req, res) {
+/*app.post('/translate', function(req, res) {
 	console.log('Got a POST request at /translate:', req.body);
 	var text = striptags(req.body.data);
 	// Redis:
@@ -398,7 +374,7 @@ app.post('/translate', function(req, res) {
 		res.send(trans);
 	}
 });
-
+*/
 // Fallback 404:
 app.use(function(req, res) {
 	console.log("404 served");
@@ -420,21 +396,35 @@ io.on('connection', function(socket) {
 		// Split is performed in constructor
 		console.log('Words', t.words);
 
-		redisClient.hexists(t.id, 'translated', function(err,res) {
+		// Check DB for text:
+		redisClient.exists('text:'+t.id, function(err,res) {
 			if (res === 1) {
-				db.getTranslation(t.id);	// emits text
+				t = db.getText(t.id);	// emits text
+			}
+			else {
+				db.storeText(t);
+			}
+		});
+		// Check what t has:
+		if (!t.translated) t.translateByGoogle();	// emits text
+		if (!t.wordFreqs) t.getWordFreqs();	// emits Obj + cefr Obj
+		if (!t.tagged) t.udpipe();		// emits HTML
+
+		// Then re-save t
+
+		// Check DB for translation
+/*		redisClient.hexists('text:'+t.id, 'translated', function(err,res) {
+			if (res === 1) {
+				db.getTranslation('text:'+t.id);	// emits text
 			}
 			else {
 				t.translateByGoogle()	// BUG: not thenable
 				.then(trans => {	// emits text
-					db.storeTranslation(t.id, trans);
+					db.storeTranslation('text:'+t.id, 'translated', trans);
 				});
 			}
 		});
-
-		//t.translateByGoogle();	// emits text
-		t.getWordFreqs();	// emits Obj
-		t.udpipe();		// emits HTML	// emits cefr Obj
+*/
 	});
 });
 
