@@ -63,40 +63,46 @@ String.prototype.hashCode = function() {
 
 // Redis wrapper class:
 class Datastore {
-	constructor() {
-
-	}
-
-	// Pass this setter a Text object:
+	// Pass this setter a live Text object:
 	storeText(t) {
-		redisClient.hmset('text:'+t.id, flatten(t), redis.print);	// ok
+		redisClient.hmset('text:'+t.id, flatten(t), function(err,result) {
+			redis.print();
+			if (result) console.log("stored", t.id);
+		});
 	}
 
 	// Retrieve data using the tid:
-	getText(tid) {
+	getText(tid, cb) {
 		// Rebuild Text object
-		return redisClient.hgetall('text:'+tid, function(err,obj) {
+		redisClient.hgetall('text:'+tid, function(err,obj) {	// returns Bool
 			redis.print();
-			var t = unflatten(obj);
-			console.log("retrieved", t);
-			return t;
+			var tdata = unflatten(obj);
+			console.log("retrieved", tdata);
+			var t = new Text(null, tdata);
+			cb(t);
 		});
 	}
 }
 var db = new Datastore();
 
 class Text {
-	constructor(text) {
-		this.source = text;
-		this.id = text.hashCode();
-		this.lang = this.detectLang();
+	constructor(source, props = {}) {
+		// Set all properties to those of the object passed in, or generate (or null) them if string passed in:
+		this.source = props.source || source;
+		this.id = props.id || source.hashCode();
+		this.lang = props.lang || this.detectLang();
 		io.emit('lang', this.lang);
-		this.words = text.split(/\W+/);	// ok
-		this.wordCounts = this.countWords();
-		this.wordFreqs = null;
-		this.translated = null;
-		this.tagged = null;
-		this.level = null;
+		this.words = props.words || source.split(/\W+/);	// ok
+		this.wordCounts = props.wordCounts || this.countWords();
+		this.wordFreqs = props.wordFreqs || null;
+		this.translated = props.translated || null;
+		this.tagged = props.tagged || null;
+		this.level = props.level || null;
+		return this;
+	}
+
+	revive(props) {	// WHAT IS MY POINT???
+		return new Text(null, props);
 	}
 
 	// Local franc module will detect any text's language:
@@ -346,30 +352,6 @@ app.get('/wikipedia/:lang/:num', function(req, res) {
 	}
 });
 
-// Translate source text:
-/*app.post('/translate', function(req, res) {
-	console.log('Got a POST request at /translate:', req.body);
-	var text = striptags(req.body.data);
-	// Redis:
-	var tid = text.hashCode();
-	redisClient.hexists(tid, 'gtranslate', function(err,res) {	// BUG: FALSE POSITIVE?
-		if (res === 1) {
-			console.log("key", tid, "exists");
-			redisClient.hget(tid, 'gtranslate', sendIt);
-		}
-		else {
-			console.log("key", tid, "doesn't exist");
-			translateByGoogle(text).then(trans => {
-				redisClient.hset(tid, 'gtranslate', trans, sendIt);
-			});
-		}
-	});
-	function sendIt(err,trans) {
-		console.log('T', trans);
-		res.send(trans);
-	}
-});
-*/
 // Fallback 404:
 app.use(function(req, res) {
 	console.log("404 served");
@@ -387,45 +369,33 @@ io.on('connection', function(socket) {
 	socket.on('text', function(data) {
 		console.log("Received socket text:", data.substring(0,50));
 		var text = striptags(data);
-		var t = new Text(text);
-		// Split is performed in constructor
-		console.log('Words', t.words);
+		var t = new Text(text);		// Constructor sets attributes source, id, lang, words, wordCounts
 
 		// Check DB for text:
 		redisClient.exists('text:'+t.id, function(err,result) {
 			if (result === 1) {
-				t = db.getText(t.id);
+				db.getText(t.id, function(newt) {
+					t = newt;
+				});	// Boolean
 			}
-			else {
+			// Check what t has:
+			setTimeout(function() {
+				console.log(typeof t);
+				if (!t.translated) t.translateByGoogle();	// sets t.translated			// emits string
+				if (!t.wordFreqs) t.getWordFreqs();		// sets t.wordFreqs, t.level	// emits Obj + cefr Obj
+				if (!t.tagged) t.udpipe();			// sets t.tagged 				// emits HTML
+			}, 3000);
+
+			// Wait for attributes before storing:
+			setTimeout(function() {
 				db.storeText(t);
-				console.log("stored", t.id);
-			}
+			}, 5000);
 		});
-		// Check what t has:
-		if (!t.translated) t.translateByGoogle();	// emits text
-		if (!t.wordFreqs) t.getWordFreqs();	// emits Obj + cefr Obj
-		if (!t.tagged) t.udpipe();		// emits HTML
-
-		// Then re-save t
-
-		// Check DB for translation
-/*		redisClient.hexists('text:'+t.id, 'translated', function(err,res) {
-			if (res === 1) {
-				db.getTranslation('text:'+t.id);	// emits text
-			}
-			else {
-				t.translateByGoogle()	// BUG: not thenable
-				.then(trans => {	// emits text
-					db.storeTranslation('text:'+t.id, 'translated', trans);
-				});
-			}
-		});
-*/
 	});
 });
 
 
-// SERVE:
+// SERVE APP:
 var port = process.env.PORT || 3000;
 server.listen(port, function() {
 	console.log('Magic happens on port ' + port);
